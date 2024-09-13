@@ -16,4 +16,5 @@ datafusion-physical-expr = { version = "41.0.0", default-features = true }
 datafusion-proto = { version = "41.0.0" }
 datafusion-sql = { version = "41.0.0" }
 futures = "0.3"
+rand = "0.8.5"
 

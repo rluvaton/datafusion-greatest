@@ -2,8 +2,8 @@
 mod tests {
     // TODO - run tests for each column when there is only one column
 
-    use datafusion::arrow::array::{Int8Array, RecordBatch};
-    use datafusion::arrow::datatypes::{Int64Type, Int8Type};
+    use datafusion::arrow::array::{Int16Array, Int8Array, RecordBatch};
+    use datafusion::arrow::datatypes::{Int16Type, Int64Type, Int8Type};
     use datafusion::prelude::SessionContext;
     use std::sync::Arc;
 
@@ -16,6 +16,7 @@ mod tests {
     use datafusion::dataframe::DataFrame;
     use datafusion::error::Result;
     use datafusion_expr::{col, ScalarUDF};
+    use rand::Rng;
 
     /// create local execution context with an in-memory table:
     ///
@@ -80,12 +81,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn i8() {
+    async fn i8_without_nulls() {
         let (ctx, greatest) = create_context();
+        let mut rng = rand::thread_rng();
 
         // define data.
-        let a_vec = vec![2, 3, 4, 5, 6, 7, -10, 1];
-        let b_vec = vec![10, 2, 5, 1, 102, 4, 6, 2];
+        let a_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i8>()));
+        let b_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i8>()));
         let a: ArrayRef = Arc::new(Int8Array::from(a_vec.clone()));
         let b: ArrayRef = Arc::new(Int8Array::from(b_vec.clone()));
         let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
@@ -104,6 +106,69 @@ mod tests {
         let df = original_df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
         let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn i8_with_nulls() {
+        let (ctx, greatest) = create_context();
+        let mut rng = rand::thread_rng();
+
+        // define data.
+        let a_vec = vec![Some(1), None, Some(-10), Some(4), None, Some(120), Some(7), Some(30)];
+        let b_vec = vec![Some(5), None, None, Some(-2), Some(10), Some(1), Some(23), None];
+        let a: ArrayRef = Arc::new(Int8Array::from(a_vec.clone()));
+        let b: ArrayRef = Arc::new(Int8Array::from(b_vec.clone()));
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
+        ctx.register_batch("t", batch).unwrap();
+
+
+        // get a DataFrame from the context for scanning the "t" table
+        let df = ctx.table("t").await.unwrap();
+
+
+        let original_df = df.clone();
+
+        // Call pow(a, 10) using the DataFrame API
+        let df = original_df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
+
+        // assert_eq!(results, vec![
+        //     find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        // ]);
+    }
+
+    #[tokio::test]
+    async fn i16_without_nulls() {
+        let (ctx, greatest) = create_context();
+        let mut rng = rand::thread_rng();
+
+        // define data.
+        let a_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i16>()));
+        let b_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i16>()));
+        let a: ArrayRef = Arc::new(Int16Array::from(a_vec.clone()));
+        let b: ArrayRef = Arc::new(Int16Array::from(b_vec.clone()));
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
+        ctx.register_batch("t", batch).unwrap();
+
+        // get a DataFrame from the context for scanning the "t" table
+        let df = ctx.table("t").await.unwrap();
+
+
+        let original_df = df.clone();
+
+        // Call pow(a, 10) using the DataFrame API
+        let df = original_df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_result_as_matrix::<Int16Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])

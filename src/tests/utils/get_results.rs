@@ -1,5 +1,5 @@
 use crate::tests::utils::debug::wrap_with_debug;
-use datafusion::arrow::array::{ArrowPrimitiveType, PrimitiveArray};
+use datafusion::arrow::array::{ArrowPrimitiveType, AsArray, PrimitiveArray};
 use datafusion::arrow::compute::concat_batches;
 use datafusion::error::Result;
 use datafusion::prelude::DataFrame;
@@ -23,8 +23,7 @@ pub(crate) async fn get_result_as_matrix<PrimitiveType: ArrowPrimitiveType>(df: 
                 .iter()
                 .map(|column| {
                     column
-                        .as_any()
-                        .downcast_ref::<PrimitiveArray<PrimitiveType>>()
+                        .as_primitive_opt::<PrimitiveType>()
                         // TODO - print the found results on failure
                         .expect("Unable to downcast to expected PrimitiveArray")
                         .values()

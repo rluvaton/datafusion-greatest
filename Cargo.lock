@@ -1233,6 +1233,7 @@ dependencies = [
  "datafusion-proto",
  "datafusion-sql",
  "futures",
+ "rand",
  "tokio",
 ]
 

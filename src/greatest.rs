@@ -31,7 +31,7 @@ impl GreatestUdf {
     pub(crate) fn new() -> Self {
         Self {
             signature: Signature::user_defined(Volatility::Immutable),
-            aliases: vec!["my_greatest".to_string()],
+            aliases: vec![],
         }
     }
 }
@@ -41,7 +41,15 @@ fn is_larger_or_equal(input1: &dyn Array, input2: &dyn Array) -> std::result::Re
         return cmp::gt_eq(&input1, &input2); // Use faster vectorised kernel
     }
 
-    let cmp = make_comparator(input1, input2, SortOptions::default())?;
+    let sort_options = SortOptions {
+        // We want greatest first
+        descending: true,
+
+        // We want nulls in the end
+        nulls_first: false,
+    };
+
+    let cmp = make_comparator(input1, input2, sort_options)?;
     let len = input1.len().min(input2.len());
     let values = (0..len).map(|i| cmp(i, i).is_ge()).collect();
     let nulls = NullBuffer::union(input1.nulls(), input2.nulls());

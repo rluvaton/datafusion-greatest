@@ -32,6 +32,7 @@ pub(crate) fn find_greatest<T: Ord + Copy + 'static>(results: Vec<Vec<T>>) -> Ve
 mod tests {
     use super::*;
 
+    #[test]
     fn test_get_expected_greatest_i8() {
         let col_a: Vec<i8> = vec![
             1,
@@ -62,6 +63,7 @@ mod tests {
         ]);
     }
 
+    #[test]
     fn test_get_expected_greatest_i16() {
         let col_a: Vec<i16> = vec![
             1,
@@ -90,6 +92,26 @@ mod tests {
             34,
             126
         ]);
+    }
+
+    #[test]
+    fn test_get_expected_greatest_i8_2_rows() {
+        let col_a: Vec<i8> = vec![117, 56, -120, 115, 68, -95, -94, -96];
+        let col_b: Vec<i8> = vec![-114, -100, -37, 11, 109, -4, -67, 29];
+        let cols = vec![col_a, col_b];
+        let expected = vec![117, 56, -37, 115, 109, -4, -67, 29];
+
+        assert_eq!(find_greatest(cols), expected);
+    }
+
+    #[test]
+    fn test_get_expected_greatest_nullable_i8() {
+        let col_a: Vec<Option<i8>> = vec![Some(1), None, Some(-10), Some(4), None, Some(120), Some(7), Some(30)];
+        let col_b: Vec<Option<i8>> = vec![Some(5), None, None, Some(-2), Some(10), Some(1), Some(23), None];
+        let cols = vec![col_a, col_b];
+        let expected = vec![Some(5), None, Some(-10), Some(4), Some(10), Some(120), Some(23), Some(30)];
+
+        assert_eq!(find_greatest(cols), expected);
     }
 
     // TODO - add test for f32 and f64
