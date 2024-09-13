@@ -1,7 +1,7 @@
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::type_coercion::functions::can_coerce_from;
 
-pub fn find_coerced_type(data_types: &[DataType]) -> Option<&DataType> {
+pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Option<&DataType> {
     let first_type = data_types.first().expect("Must have at least one type");
 
     // TODO - avoid comparing the first type twice

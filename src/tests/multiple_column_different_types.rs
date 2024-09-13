@@ -8,7 +8,7 @@ mod multiple_column_different_types_tests {
     ///
 
     #[tokio::test]
-    fn test_invalid_expr() {
+    async fn test_invalid_expr() {
         todo!();
     }
 }

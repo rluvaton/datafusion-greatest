@@ -7,7 +7,7 @@ mod scalars_tests {
     ///
 
     #[tokio::test]
-    fn test_invalid_expr() {
+    async fn test_invalid_expr() {
         todo!();
     }
 }

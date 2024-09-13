@@ -20,7 +20,7 @@ use datafusion_expr::sort_properties::{ExprProperties, SortProperties};
 ///
 /// To do so, we must implement the `ScalarUDFImpl` trait.
 #[derive(Debug, Clone)]
-struct GreatestUdf {
+pub struct GreatestUdf {
     signature: Signature,
     aliases: Vec<String>,
 }
@@ -28,7 +28,7 @@ struct GreatestUdf {
 
 impl GreatestUdf {
     /// Create a new instance of the `GreatestUdf` struct
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             signature: Signature::user_defined(Volatility::Immutable),
             aliases: vec!["my_greatest".to_string()],
@@ -36,7 +36,7 @@ impl GreatestUdf {
     }
 }
 
-pub fn is_larger_or_equal(input1: &dyn Array, input2: &dyn Array) -> std::result::Result<BooleanArray, ArrowError> {
+fn is_larger_or_equal(input1: &dyn Array, input2: &dyn Array) -> std::result::Result<BooleanArray, ArrowError> {
     if !input1.data_type().is_nested() {
         return cmp::gt_eq(&input1, &input2); // Use faster vectorised kernel
     }
@@ -257,8 +257,8 @@ mod tests {
 
 
     async fn setup() -> Result<(SessionContext, DataFrame, ScalarUDF, Vec<Vec<f64>>)> {
-        /// In this example we register `GreatestUdf` as a user defined function
-        /// and invoke it via the DataFrame API and SQL
+        // In this example we register `GreatestUdf` as a user defined function
+        // and invoke it via the DataFrame API and SQL
         let (ctx, data) = create_context()?;
 
         // create the UDF
