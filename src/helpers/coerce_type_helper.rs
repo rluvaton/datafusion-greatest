@@ -1,15 +1,24 @@
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::type_coercion::functions::can_coerce_from;
+use datafusion::error::Result;
 
-pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Option<&DataType> {
-    let first_type = data_types.first().expect("Must have at least one type");
+pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
+    let mut non_null_types = data_types.iter().filter(|t| {
+        !t.is_null()
+    }).into_iter();
 
-    // TODO - avoid comparing the first type twice
-    // can_coerce_from
+    let first_type = non_null_types.next();
+
+    // If every type is null, return null
+    if first_type.is_none() {
+        return Ok(&DataType::Null);
+    }
+
+    let first_type = first_type.unwrap();
 
     let mut current_type = first_type;
 
-    for t in data_types.iter() {
+    for t in non_null_types {
         if t == current_type {
             continue;
         }
@@ -26,7 +35,8 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Option<&DataType> {
         // If we can't coerce from the current type to the new type and vice versa, we can't continue
         // as we can't find a common type
         if !can_coerce_current_to_type && !can_coerce_type_to_current {
-            return None;
+            // TODO - use better error type so the user will understand it's their input
+            return Err(datafusion::error::DataFusionError::Internal("Cannot find a common type for arguments".to_string()));
         }
 
         // i64 -> i32 (no) | i32 -> i64 (yes)
@@ -42,5 +52,5 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Option<&DataType> {
         }
     }
 
-    Some(current_type)
+    Ok(current_type)
 }

@@ -58,11 +58,7 @@ impl ScalarUDFImpl for GreatestUdf {
     /// this case it will always be a constant value, but it could also be a
     /// function of the input types.
     fn return_type(&self, arg_types: &[DataType]) -> Result<DataType> {
-        find_coerced_type(arg_types).cloned().ok_or_else(|| {
-            DataFusionError::Internal(
-                "Could not find a common type for the arguments".to_string(),
-            )
-        })
+        find_coerced_type(arg_types).cloned()
     }
 
     /// This is the function that actually calculates the results.
@@ -141,14 +137,8 @@ impl ScalarUDFImpl for GreatestUdf {
 
         // Make sure we can do the comparison,
         // similar to: https://github.com/apache/spark/blob/19aad9ee36edad0906b8223074351bfb76237c0a/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/arithmetic.scala#L1287-L1295
-        let coerced_type = find_coerced_type(input_types);
+        let coerced_type = find_coerced_type(input_types)?;
 
-        // If we can't find a common type, we can't continue
-        if coerced_type.is_none() {
-            return exec_err!("greatest cannot resolve the input types {:?}", input_types);
-        }
-
-        let coerced_type = coerced_type.unwrap();
         Ok(vec![coerced_type.clone(); input_types.len()])
     }
 }

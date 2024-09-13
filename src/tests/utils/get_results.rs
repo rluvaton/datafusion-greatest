@@ -22,6 +22,11 @@ pub(crate) async fn get_result_as_matrix<PrimitiveType: ArrowPrimitiveType>(df: 
             columns
                 .iter()
                 .map(|column| {
+
+                    if column.data_type().is_null() {
+                        return vec![None; column.len()];
+                    }
+
                     column
                         .as_primitive_opt::<PrimitiveType>()
                         // TODO - print the found results on failure
