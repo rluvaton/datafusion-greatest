@@ -4,7 +4,7 @@ mod setup;
 mod debug;
 mod generators;
 
-pub(crate) use get_results::get_result_as_matrix;
+pub(crate) use get_results::*;
 pub(crate) use find_greatest::find_greatest;
 pub(crate) use setup::*;
 pub(crate) use debug::*;

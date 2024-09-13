@@ -24,8 +24,8 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
         }
 
         // TODO - cache?
-        let can_coerce_current_to_type = can_coerce_from(current_type, t);
-        let can_coerce_type_to_current = can_coerce_from(t, current_type);
+        let can_coerce_current_to_type = can_coerce_from(t, current_type);
+        let can_coerce_type_to_current = can_coerce_from(current_type, t);
 
         // If we can coerce from the current type to the new type and vice versa, we can continue
         if can_coerce_current_to_type && can_coerce_type_to_current {

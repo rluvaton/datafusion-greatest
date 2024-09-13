@@ -5,8 +5,8 @@ mod scalars_tests {
     /// This does not include columns
     ///
 
-    use crate::tests::utils::{create_context, create_empty_data_frame, get_result_as_matrix};
-    use datafusion::arrow::datatypes::{Float32Type, Int8Type};
+    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_result_as_matrix, parse_single_column};
+    use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int64Type, Int8Type};
     use datafusion_common::ScalarValue;
     use datafusion_expr::lit;
     use crate::helpers::{Permutation, Transpose};
@@ -124,5 +124,43 @@ mod scalars_tests {
                 assert_eq!(r.unwrap().is_nan(), true);
             }
         }
+    }
+
+    #[tokio::test]
+    async fn coerce() {
+        let (ctx, greatest) = create_context();
+
+        let df = create_empty_data_frame(&ctx, true).unwrap();
+
+        let df = df.select(vec![
+
+            // i8, i16, i32, i64 all in the bounds of i8
+            greatest.call(vec![lit(4i8), lit(2i16), lit(3i32), lit(-2i64)]),
+
+            // i8, i16, i32, i64 all in the bounds of i16
+            greatest.call(vec![lit(i8::MAX), lit(134i16), lit(i16::MAX as i32), lit(i16::MIN as i64)]),
+
+            // i8, i16, i32, i64 all in the bounds of i32
+            greatest.call(vec![lit(i8::MAX), lit(i16::MAX), lit(i32::MAX), lit(i32::MIN as i64)]),
+
+            // i8, i16, i32, i64 all in the bounds of i64
+            greatest.call(vec![lit(i8::MAX), lit(i16::MAX), lit(i32::MAX), lit(i64::MAX)]),
+
+
+            greatest.call(vec![lit(f32::MAX), lit(f64::MAX), lit(i8::MAX), lit(i16::MAX), lit(i32::MAX), lit(i64::MAX)]),
+
+
+        ]).unwrap();
+
+        let c = df.clone();
+
+        let results = get_combined_results(df).await.unwrap();
+        let columns: Vec<_> = results.columns().iter().collect();
+
+        assert_eq!(parse_single_column::<Int64Type>(columns[0]), vec![Some(4i64)]);
+        assert_eq!(parse_single_column::<Int64Type>(columns[1]), vec![Some(i16::MAX as i64)]);
+        assert_eq!(parse_single_column::<Int64Type>(columns[2]), vec![Some(i32::MAX as i64)]);
+        assert_eq!(parse_single_column::<Int64Type>(columns[3]), vec![Some(i64::MAX)]);
+        assert_eq!(parse_single_column::<Float64Type>(columns[4]), vec![Some(f64::MAX)]);
     }
 }

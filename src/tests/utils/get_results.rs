@@ -1,6 +1,6 @@
-use crate::tests::utils::debug::wrap_with_debug;
-use datafusion::arrow::array::{ArrowPrimitiveType, AsArray, PrimitiveArray};
+use datafusion::arrow::array::{ArrayRef, ArrowPrimitiveType, AsArray};
 use datafusion::arrow::compute::concat_batches;
+use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::error::Result;
 use datafusion::prelude::DataFrame;
 
@@ -11,35 +11,37 @@ use datafusion::prelude::DataFrame;
 /// If you want to have the rows in the matrix to correspond to the rows in the DataFrame,
 /// you can use the `transpose` method on the resulting matrix.
 pub(crate) async fn get_result_as_matrix<PrimitiveType: ArrowPrimitiveType>(df: DataFrame) -> Result<Vec<Vec<Option<PrimitiveType::Native>>>> {
+    let columns = get_combined_results(df).await?;
 
+    Ok(
+        columns
+            .columns()
+            .iter()
+            .map(|column| parse_single_column::<PrimitiveType>(column))
+            .collect::<Vec<_>>()
+    )
+}
+
+pub(crate) async fn get_combined_results<'a>(df: DataFrame) -> Result<RecordBatch> {
     let schema = df.schema().clone();
 
-    wrap_with_debug(df, |results, | {
-        let all_batches_as_one = concat_batches(schema.as_ref(), results.iter())?;
-        let columns = all_batches_as_one.columns();
+    concat_batches(schema.as_ref(), df.collect().await?.iter()).map_err(|e| e.into())
+}
 
-        Ok(
-            columns
-                .iter()
-                .map(|column| {
+pub(crate) fn parse_single_column<PrimitiveType: ArrowPrimitiveType>(column: &ArrayRef) -> Vec<Option<PrimitiveType::Native>> {
+    if column.data_type().is_null() {
+        return vec![None; column.len()];
+    }
 
-                    if column.data_type().is_null() {
-                        return vec![None; column.len()];
-                    }
-
-                    column
-                        .as_primitive_opt::<PrimitiveType>()
-                        // TODO - print the found results on failure
-                        .expect("Unable to downcast to expected PrimitiveArray")
-                        .values()
-                        .iter()
-                        .enumerate()
-                        .map(|(index, value)| if column.is_null(index) { None } else { Some(*value) })
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>()
-        )
-    }).await
+    column
+        .as_primitive_opt::<PrimitiveType>()
+        // TODO - print the found results on failure
+        .expect("Unable to downcast to expected PrimitiveArray")
+        .values()
+        .iter()
+        .enumerate()
+        .map(|(index, value)| if column.is_null(index) { None } else { Some(*value) })
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
@@ -58,7 +60,6 @@ mod tests {
             Field::new("b", DataType::Int32, false),
             Field::new("c", DataType::Int32, false),
         ]));
-
 
 
         let a_vec: Vec<i32> = vec![1, 10, 10, 100];
