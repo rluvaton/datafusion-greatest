@@ -1,4 +1,4 @@
-use crate::helpers::find_coerced_type;
+use crate::helpers::{find_coerced_type, is_larger_or_equal, keep_larger};
 use datafusion::error::Result;
 use datafusion::logical_expr::Volatility;
 use std::any::Any;
@@ -12,6 +12,7 @@ use datafusion::arrow::error::ArrowError;
 use datafusion_common::{exec_err, DataFusionError};
 use datafusion_expr::{ColumnarValue, ScalarUDFImpl, Signature};
 use datafusion_expr::sort_properties::{ExprProperties, SortProperties};
+use crate::traits::NullBufferExt;
 
 /// This example shows how to use the full ScalarUDFImpl API to implement a user
 /// defined function. As in the `simple_udf.rs` example, this struct implements
@@ -36,25 +37,6 @@ impl GreatestUdf {
     }
 }
 
-fn is_larger_or_equal(input1: &dyn Array, input2: &dyn Array) -> std::result::Result<BooleanArray, ArrowError> {
-    if !input1.data_type().is_nested() {
-        return cmp::gt_eq(&input1, &input2); // Use faster vectorised kernel
-    }
-
-    let sort_options = SortOptions {
-        // We want greatest first
-        descending: true,
-
-        // We want nulls in the end
-        nulls_first: false,
-    };
-
-    let cmp = make_comparator(input1, input2, sort_options)?;
-    let len = input1.len().min(input2.len());
-    let values = (0..len).map(|i| cmp(i, i).is_ge()).collect();
-    let nulls = NullBuffer::union(input1.nulls(), input2.nulls());
-    Ok(BooleanArray::new(values, nulls))
-}
 
 impl ScalarUDFImpl for GreatestUdf {
     /// We implement as_any so that we can downcast the ScalarUDFImpl trait object
@@ -97,57 +79,43 @@ impl ScalarUDFImpl for GreatestUdf {
         assert!(args.len() >= 2);
 
         let return_type = args[0].data_type();
-        let mut return_array = args.iter().filter_map(|x| match x {
-            ColumnarValue::Array(array) => Some(array.len()),
-            _ => None,
-        });
 
-        if let Some(size) = return_array.next() {
-            // start with nulls as default output
-            let mut current_value = new_null_array(&return_type, size);
-            let mut remainder = BooleanArray::from(vec![true; size]);
+        // TODO - different size arrays
+        let return_array_size = args
+            .iter()
+            .filter_map(|x| match x {
+                ColumnarValue::Array(array) => Some(array.len()),
+                _ => None,
+            })
+            .next()
 
-            for arg in args {
-                match arg {
-                    ColumnarValue::Array(ref array) => {
+            // 1 in the case of scalar
+            .unwrap_or(1);
 
-                        // TODO - improve performance of this
-                        let to_apply = and(&remainder, &is_larger_or_equal(array.as_ref(), current_value.as_ref())?)?;
-                        current_value = zip(&to_apply, array, &current_value)?;
-                        remainder = and(&remainder, &is_larger_or_equal(current_value.as_ref(), array.as_ref())?)?;
-                    }
-                    ColumnarValue::Scalar(value) => {
-                        if value.is_null() {
-                            continue;
-                        }
 
-                        // TODO - this has bad performance
-                        let last_value = value.to_array_of_size(size)?;
-                        let to_apply = and(&remainder, &is_larger_or_equal(last_value.as_ref(), current_value.as_ref())?)?;
-                        current_value = zip(&to_apply, &last_value, &current_value)?;
-                        remainder = and(&remainder, &is_larger_or_equal(current_value.as_ref(), last_value.as_ref())?)?;
+        // start with nulls as default output
+        let mut current_value = new_null_array(&return_type, return_array_size);
 
-                        // current_value = zip(&remainder, &last_value, &current_value)?;
-                        break;
-                    }
+        for arg in args {
+            match arg {
+                ColumnarValue::Array(ref array) => {
+                    current_value = keep_larger(array.clone(), current_value)?;
                 }
-                if remainder.iter().all(|x| x == Some(false)) {
-                    break;
+                ColumnarValue::Scalar(value) => {
+                    // If null skip to avoid creating array full of nulls
+                    if value.is_null() {
+                        continue;
+                    }
+
+
+                    // TODO - this has bad performance
+                    let last_value = value.to_array_of_size(return_array_size)?;
+                    current_value = keep_larger(last_value, current_value)?;
                 }
             }
-            Ok(ColumnarValue::Array(current_value))
-        } else {
-            // todo
-            let result = args
-                .iter()
-                .filter_map(|x| match x {
-                    ColumnarValue::Scalar(s) if !s.is_null() => Some(x.clone()),
-                    _ => None,
-                })
-                .next()
-                .unwrap_or_else(|| args[0].clone());
-            Ok(result)
         }
+
+        Ok(ColumnarValue::Array(current_value))
     }
 
     /// We will also add an alias of "my_greatest"
@@ -155,9 +123,8 @@ impl ScalarUDFImpl for GreatestUdf {
         &self.aliases
     }
 
-
     fn output_ordering(&self, input: &[ExprProperties]) -> Result<SortProperties> {
-        // The POW function preserves the order of its argument.
+        // the greatest preserves the order of the input as it doesn't matter
         Ok(input[0].sort_properties)
     }
 
@@ -328,7 +295,7 @@ mod tests {
         let (ctx, df, greatest, all_data) = setup().await.unwrap();
 
         // You can also invoke both pow(2, 10)  and its alias my_pow(a, b) using SQL
-        let sql_df = ctx.sql("SELECT greatest(2, 10), my_greatest(a, b) FROM t").await.unwrap();
+        let sql_df = ctx.sql("SELECT greatest(2, 10), greatest(a, b) FROM t").await.unwrap();
         sql_df.show().await.unwrap();
     }
 }

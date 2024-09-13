@@ -1,5 +1,5 @@
 use std::any::{Any, TypeId};
-use crate::tests::utils::transpose::Transpose;
+use crate::helpers::Transpose;
 
 /// Results are returned as a matrix where each row corresponds to a column in the DataFrame.
 pub(crate) fn find_greatest<T: Ord + Copy + 'static>(results: Vec<Vec<T>>) -> Vec<T> {

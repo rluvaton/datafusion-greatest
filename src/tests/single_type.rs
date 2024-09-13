@@ -2,8 +2,8 @@
 mod tests {
     // TODO - run tests for each column when there is only one column
 
-    use datafusion::arrow::array::{Int16Array, Int8Array, RecordBatch};
-    use datafusion::arrow::datatypes::{Int16Type, Int64Type, Int8Type};
+    use datafusion::arrow::array::RecordBatch;
+    use datafusion::arrow::datatypes::{Int16Type, Int8Type};
     use datafusion::prelude::SessionContext;
     use std::sync::Arc;
 
@@ -11,7 +11,7 @@ mod tests {
     // TODO - create helpers for testing
 
     use crate::greatest::GreatestUdf;
-    use crate::tests::utils::{create_context, find_greatest, get_result_as_matrix};
+    use crate::tests::utils::{create_context, create_primitive_array, find_greatest, generate_optional_values, get_result_as_matrix};
     use datafusion::arrow::array::{ArrayRef, Float64Array};
     use datafusion::dataframe::DataFrame;
     use datafusion::error::Result;
@@ -86,10 +86,11 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         // define data.
-        let a_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i8>()));
-        let b_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i8>()));
-        let a: ArrayRef = Arc::new(Int8Array::from(a_vec.clone()));
-        let b: ArrayRef = Arc::new(Int8Array::from(b_vec.clone()));
+        let a_vec = Vec::from_iter((0..8).map(|_| Some(rng.gen::<i8>())));
+        let b_vec = Vec::from_iter((0..8).map(|_| Some(rng.gen::<i8>())));
+        let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
+        let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
+
         let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
 
         // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
@@ -115,13 +116,12 @@ mod tests {
     #[tokio::test]
     async fn i8_with_nulls() {
         let (ctx, greatest) = create_context();
-        let mut rng = rand::thread_rng();
 
         // define data.
         let a_vec = vec![Some(1), None, Some(-10), Some(4), None, Some(120), Some(7), Some(30)];
         let b_vec = vec![Some(5), None, None, Some(-2), Some(10), Some(1), Some(23), None];
-        let a: ArrayRef = Arc::new(Int8Array::from(a_vec.clone()));
-        let b: ArrayRef = Arc::new(Int8Array::from(b_vec.clone()));
+        let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
+        let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
         let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
 
         // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
@@ -139,21 +139,19 @@ mod tests {
 
         let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
 
-        // assert_eq!(results, vec![
-        //     find_greatest(vec![a_vec.clone(), b_vec.clone()])
-        // ]);
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
     }
 
     #[tokio::test]
     async fn i16_without_nulls() {
         let (ctx, greatest) = create_context();
-        let mut rng = rand::thread_rng();
 
-        // define data.
-        let a_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i16>()));
-        let b_vec = Vec::from_iter((0..8).map(|_| rng.gen::<i16>()));
-        let a: ArrayRef = Arc::new(Int16Array::from(a_vec.clone()));
-        let b: ArrayRef = Arc::new(Int16Array::from(b_vec.clone()));
+        let a_vec = generate_optional_values::<i16>(100, Some(0.0));
+        let b_vec = generate_optional_values::<i16>(100, Some(0.0));
+        let a: ArrayRef = create_primitive_array::<Int16Type>(a_vec.clone());
+        let b: ArrayRef = create_primitive_array::<Int16Type>(b_vec.clone());
         let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
 
         // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
@@ -180,7 +178,7 @@ mod tests {
         let (ctx, df, greatest, all_data) = setup().await.unwrap();
 
         // You can also invoke both pow(2, 10)  and its alias my_pow(a, b) using SQL
-        let sql_df = ctx.sql("SELECT greatest(2, 10), my_greatest(a, b) FROM t").await.unwrap();
+        let sql_df = ctx.sql("SELECT greatest(2, 10), greatest(a, b) FROM t").await.unwrap();
         sql_df.show().await.unwrap();
     }
 }

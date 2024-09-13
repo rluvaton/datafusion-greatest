@@ -2,7 +2,7 @@ pub(crate) trait Transpose {
     fn transpose(&self) -> Self;
 }
 
-impl<T: Copy> Transpose for Vec<Vec<T>> {
+impl<T: Clone> Transpose for Vec<Vec<T>> {
     fn transpose(&self) -> Self {
         let mut rows = vec![];
 
@@ -11,7 +11,9 @@ impl<T: Copy> Transpose for Vec<Vec<T>> {
                 if rows.len() <= j {
                     rows.push(vec![]);
                 }
-                rows[j].push(self[i][j]);
+
+                // This does not suppose to be fast as it's just for tests
+                rows[j].push(self[i][j].clone());
             }
         }
 

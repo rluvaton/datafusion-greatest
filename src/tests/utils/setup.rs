@@ -1,5 +1,6 @@
+use datafusion::dataframe::DataFrame;
 use datafusion::prelude::SessionContext;
-use datafusion_expr::ScalarUDF;
+use datafusion_expr::{LogicalPlanBuilder, ScalarUDF};
 use crate::GreatestUdf;
 
 
@@ -17,4 +18,10 @@ pub(crate) fn create_context() -> (SessionContext, ScalarUDF) {
     ctx.register_udf(greatest.clone());
 
     (ctx, greatest)
+}
+
+pub(crate) fn create_empty_data_frame(ctx: &SessionContext, create_one_row: bool) -> datafusion_common::Result<DataFrame> {
+    let plan = LogicalPlanBuilder::empty(create_one_row).build()?;
+
+    Ok(DataFrame::new(ctx.state(), plan))
 }

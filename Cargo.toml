@@ -5,10 +5,12 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.40.0", features = ["rt-multi-thread", "parking_lot"] }
-arrow = "53"
-arrow-flight = "53"
-arrow-schema = "53"
+#arrow = "53"
+#arrow-flight = "53"
+#arrow-schema = "53"
 datafusion = { version = "41.0.0", default-features = true, features = ["avro"] }
+
+# TODO - need those?
 datafusion-common = { version = "41.0.0", default-features = true }
 datafusion-expr = { version = "41.0.0" }
 datafusion-optimizer = { version = "41.0.0", default-features = true }
