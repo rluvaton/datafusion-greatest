@@ -27,6 +27,19 @@ mod scalars_tests {
     }
 
     #[tokio::test]
+    async fn all_null() {
+        let (ctx, greatest) = create_context();
+
+        let df = create_empty_data_frame(&ctx, true).unwrap();
+
+        let df = df.select(vec![vec![greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(ScalarValue::Null)])]].concat()).unwrap();
+
+        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap().transpose();
+
+        assert_eq!(results, vec![[None]]);
+    }
+
+    #[tokio::test]
     async fn i8_tests() {
         let (ctx, greatest) = create_context();
 
@@ -46,15 +59,6 @@ mod scalars_tests {
             only_integers_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
             two_integers_one_none_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
             two_none_one_integer_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
-
-            // ###############################
-            // Only none
-            // ###############################
-
-            // None, None, None => None
-            vec![greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(ScalarValue::Null)])],
-
-
         ].concat()).unwrap();
 
         let results = get_result_as_matrix::<Int8Type>(df).await.unwrap().transpose();
@@ -63,7 +67,6 @@ mod scalars_tests {
             vec![Some(3); only_integers_permutations.len()],
             vec![Some(5); two_integers_one_none_permutations.len()],
             vec![Some(1); two_none_one_integer_permutations.len()],
-            vec![None]
         ].concat()]);
     }
 
@@ -74,89 +77,52 @@ mod scalars_tests {
 
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
+        // Only f32 - 1, 2, 3 => 3
+        let only_f32_permutations = vec![lit(1f32), lit(2f32), lit(3f32)].permutation(3);
+
+        // 1 None, 2 f32 - 1, None, 5 => 5
+        let two_f32_one_none_permutations = vec![lit(1f32), lit(ScalarValue::Null), lit(5f32)].permutation(3);
+
+        // 2 None, 1 f32 - None, None, 1 => 1
+        let two_none_one_f32_permutations = vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(1f32)].permutation(3);
+
         let df = df.select(vec![
-
-            // ###############################
-            // Only f32
-            // ###############################
-
-            // 1, 2, NAN => NAN
-            greatest.call(vec![lit(1.0f32), lit(2.0f32), lit(f32::NAN)]),
-
-            // NAN, 2, 1 => NAN
-            greatest.call(vec![lit(f32::NAN), lit(2.0f32), lit(1.0f32)]),
-
-            // NAN, 1, 2 => NAN
-            greatest.call(vec![lit(f32::NAN), lit(1.0f32), lit(2.0f32)]),
-
-            // 2, NAN, 1 => NAN
-            greatest.call(vec![lit(2.0f32), lit(f32::NAN), lit(1.0f32)]),
-
-            // ###############################
-            // 1 None, 2 f32 and 1 NaN
-            // ###############################
-
-            // 1, None, NaN, 5 => 5
-            greatest.call(vec![lit(1.0f32), lit(ScalarValue::Null), lit(5.0f32)]),
-
-            // 1, None, 5 => 5
-            greatest.call(vec![lit(1.0f32), lit(ScalarValue::Null), lit(5.0f32)]),
-
-            // None, 1, 5 => 5
-            greatest.call(vec![lit(ScalarValue::Null), lit(1.0f32), lit(5.0f32)]),
-
-            // 1, 5, None => 5
-            greatest.call(vec![lit(1.0f32), lit(5.0f32), lit(ScalarValue::Null)]),
-
-            // 5, 1, None => 5
-            greatest.call(vec![lit(5.0f32), lit(1.0f32), lit(ScalarValue::Null)]),
-
-            // 5, None, 1 => 5
-            greatest.call(vec![lit(5.0f32), lit(ScalarValue::Null), lit(1.0f32)]),
-
-
-            // ###############################
-            // 2 None, 1 f32
-            // ###############################
-
-            // None, None, 1 => 1
-            greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(1.0f32)]),
-
-            // None, 1, None => 1
-            greatest.call(vec![lit(ScalarValue::Null), lit(1.0f32), lit(ScalarValue::Null)]),
-
-            // 1, None, None => 1
-            greatest.call(vec![lit(1.0f32), lit(ScalarValue::Null), lit(ScalarValue::Null)]),
-
-            // ###############################
-            // Only none
-            // ###############################
-
-            // None, None, None => None
-            greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(ScalarValue::Null)]),
-
-
-        ]).unwrap();
+            only_f32_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
+            two_f32_one_none_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
+            two_none_one_f32_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
+        ].concat()).unwrap();
 
         let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
 
-        assert_eq!(results, vec![vec![
-            Some(3.0),
-            Some(3.0),
-            Some(3.0),
-            Some(3.0),
+        assert_eq!(results, vec![[
+            vec![Some(3f32); only_f32_permutations.len()],
+            vec![Some(5f32); two_f32_one_none_permutations.len()],
+            vec![Some(1f32); two_none_one_f32_permutations.len()],
+        ].concat()]);
+    }
 
-            Some(5.0),
-            Some(5.0),
-            Some(5.0),
-            Some(5.0),
-            Some(5.0),
+    #[tokio::test]
+    async fn float_nan_tests() {
 
-            Some(1.0),
-            Some(1.0),
-            Some(1.0),
+        let (ctx, greatest) = create_context();
 
-            None
-        ]]);
+        let df = create_empty_data_frame(&ctx, true).unwrap();
+
+        // 1 None, 1 f32:NAN  and one regular f32
+        let one_none_one_nan_one_number = vec![lit(1f32), lit(ScalarValue::Null), lit(f32::NAN)].permutation(3);
+
+        let df = df.select(vec![
+            one_none_one_nan_one_number.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
+        ].concat()).unwrap();
+
+        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
+
+        for result in results {
+            for r in result {
+                assert_eq!(r.is_none(), false);
+                assert_eq!(r.is_some(), true);
+                assert_eq!(r.unwrap().is_nan(), true);
+            }
+        }
     }
 }
