@@ -1,3 +1,4 @@
+use crate::tests::utils::debug::wrap_with_debug;
 use datafusion::arrow::array::{ArrowPrimitiveType, PrimitiveArray};
 use datafusion::arrow::compute::concat_batches;
 use datafusion::error::Result;
@@ -10,26 +11,30 @@ use datafusion::prelude::DataFrame;
 /// If you want to have the rows in the matrix to correspond to the rows in the DataFrame,
 /// you can use the `transpose` method on the resulting matrix.
 pub(crate) async fn get_result_as_matrix<PrimitiveType: ArrowPrimitiveType>(df: DataFrame) -> Result<Vec<Vec<PrimitiveType::Native>>> {
-    let results = df.clone().collect().await?;
 
-    let all_batches_as_one = concat_batches(df.schema().as_ref(), results.iter())?;
-    let columns = all_batches_as_one.columns();
+    let schema = df.schema().clone();
 
-    Ok(
-        columns
-            .iter()
-            .map(|column| {
-                column
-                    .as_any()
-                    .downcast_ref::<PrimitiveArray<PrimitiveType>>()
-                    .expect("Unable to downcast to expected PrimitiveArray")
-                    .values()
-                    .iter()
-                    .map(|v| *v)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>()
-    )
+    wrap_with_debug(df, |results, | {
+        let all_batches_as_one = concat_batches(schema.as_ref(), results.iter())?;
+        let columns = all_batches_as_one.columns();
+
+        Ok(
+            columns
+                .iter()
+                .map(|column| {
+                    column
+                        .as_any()
+                        .downcast_ref::<PrimitiveArray<PrimitiveType>>()
+                        // TODO - print the found results on failure
+                        .expect("Unable to downcast to expected PrimitiveArray")
+                        .values()
+                        .iter()
+                        .map(|v| *v)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        )
+    }).await
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ mod tests {
     // TODO - run tests for each column when there is only one column
 
     use datafusion::arrow::array::{Int8Array, RecordBatch};
-    use datafusion::arrow::datatypes::Int8Type;
+    use datafusion::arrow::datatypes::{Int64Type, Int8Type};
     use datafusion::prelude::SessionContext;
     use std::sync::Arc;
 
@@ -11,7 +11,7 @@ mod tests {
     // TODO - create helpers for testing
 
     use crate::greatest::GreatestUdf;
-    use crate::tests::utils::{find_greatest, get_result_as_matrix};
+    use crate::tests::utils::{create_context, find_greatest, get_result_as_matrix};
     use datafusion::arrow::array::{ArrayRef, Float64Array};
     use datafusion::dataframe::DataFrame;
     use datafusion::error::Result;
@@ -33,7 +33,7 @@ mod tests {
     /// |  1  |  2  |
     /// +-----+-----+
     /// ```
-    fn create_context() -> Result<(SessionContext, Vec<Vec<f64>>)> {
+    fn create_context_2() -> Result<(SessionContext, Vec<Vec<f64>>)> {
 
 
         let a_vec = vec![2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 150.0, 1.0];
@@ -65,7 +65,7 @@ mod tests {
     async fn setup() -> Result<(SessionContext, DataFrame, ScalarUDF, Vec<Vec<f64>>)> {
         // In this example we register `GreatestUdf` as a user defined function
         // and invoke it via the DataFrame API and SQL
-        let (ctx, data) = create_context()?;
+        let (ctx, data) = create_context_2()?;
 
         // create the UDF
         let greatest = ScalarUDF::from(GreatestUdf::new());
@@ -81,16 +81,7 @@ mod tests {
 
     #[tokio::test]
     async fn i8() {
-        // In this example we register `GreatestUdf` as a user defined function
-        // and invoke it via the DataFrame API and SQL
-        // declare a new context. In Spark API, this corresponds to a new SparkSession
-        let ctx = SessionContext::new();
-
-        // create the UDF
-        let greatest = ScalarUDF::from(GreatestUdf::new());
-
-        // register the UDF with the context so it can be invoked by name and from SQL
-        ctx.register_udf(greatest.clone());
+        let (ctx, greatest) = create_context();
 
         // define data.
         let a_vec = vec![2, 3, 4, 5, 6, 7, -10, 1];
@@ -111,8 +102,6 @@ mod tests {
 
         // Call pow(a, 10) using the DataFrame API
         let df = original_df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
-
-        df.clone().show().await.unwrap();
 
         let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
 
