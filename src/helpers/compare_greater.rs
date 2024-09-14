@@ -5,6 +5,15 @@ use datafusion::error::Result;
 use datafusion::arrow::compute::kernels::cmp;
 use datafusion::arrow::compute::kernels::zip::zip;
 
+
+const SORT_OPTIONS: SortOptions = SortOptions {
+    // We want greatest first
+    descending: false,
+
+    // NULL will be less than any other value
+    nulls_first: true,
+};
+
 /// Return boolean array where `arr[i] = lhs[i] >= rhs[i]` for all i, where `arr` is the result array
 /// Nulls are always considered smaller than any other value
 pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArray> {
@@ -14,18 +23,11 @@ pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArra
     // - If both arrays are not nested: Nested types, such as lists, are not supported as the null semantics are not well-defined.
     // - both array does not have any nulls: cmp::gt_eq will return null if any of the input is null while we want to return false in that case
     if !lhs.data_type().is_nested() && lhs.null_count() == 0 && rhs.null_count() == 0 {
-        return cmp::gt_eq(&lhs, &rhs).map_err(|e| e.into()); // Use faster vectorised kernel
+        return cmp::gt_eq(&lhs, &rhs).map_err(|e| e.into());
     }
 
-    let sort_options = SortOptions {
-        // We want greatest first
-        descending: false,
 
-        // NULL will be less than any other value
-        nulls_first: true,
-    };
-
-    let cmp = make_comparator(lhs, rhs, sort_options)?;
+    let cmp = make_comparator(lhs, rhs, SORT_OPTIONS)?;
 
     // TODO - handle rest of length
     let len = lhs.len().min(rhs.len());
