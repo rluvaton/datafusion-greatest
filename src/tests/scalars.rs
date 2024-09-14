@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod scalars_tests {
-    use std::ops::Deref;
     /// These tests check that calling greatest only on scalars values
     ///
     /// This does not include columns
-    ///
 
+    use std::sync::Arc;
+    use datafusion::arrow::array::ListArray;
+    use crate::helpers::{Permutation, Transpose};
     use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_list_result_as_matrix, get_primitive_result_as_matrix, parse_primitive_column, parse_string_column};
+    use crate::vec_with_lit;
     use datafusion::arrow::datatypes::{DataType, Float32Type, Float64Type, Int32Type, Int64Type, Int8Type};
     use datafusion_common::ScalarValue;
-    use datafusion_expr::lit;
-    use crate::helpers::{Permutation, Transpose};
-    use crate::vec_with_lit;
+    use datafusion_expr::{lit, Expr};
 
     #[tokio::test]
     async fn i8_without_nulls() {
@@ -139,22 +139,72 @@ mod scalars_tests {
 
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
-        let values = vec_with_lit![
-            ScalarValue::List(ScalarValue::new_list(&vec![ScalarValue::Int32(Some(1)), ScalarValue::Int32(Some(3))], &DataType::Int32, true)),
-            ScalarValue::List(ScalarValue::new_list(&vec![ScalarValue::Int32(Some(2)), ScalarValue::Int32(Some(1))], &DataType::Int32, true)),
-        ];
+        let expressions: Vec<Expr> = vec![
+            vec![
+                // Greatest is 2 as we look at the first item in each list first
+                Some(vec![Some(2), Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than None
+                Some(vec![None, Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![Some(6), Some(100)]),
+                Some(vec![Some(6), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![None, Some(100)]),
+                Some(vec![None, Some(200)]),
+            ],
+            vec![
+                // Greatest is None as having a value is greater than no value
+                Some(vec![None]),
+                Some(vec![]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than 0, even though the length is different
+                Some(vec![Some(1)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 4 as 4 is greater than nothing
+                Some(vec![Some(0)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 0 as 0 is greater than None
+                Some(vec![None, Some(3)]),
+                Some(vec![Some(0)]),
+            ],
+        ]
+            .iter()
+            .map(|args| {
+                args
+                    .iter()
+                    .map(|list| lit(ScalarValue::List(Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(Some(list.clone()))))))
+                    .collect()
+            })
+            .map(|args| greatest.call(args))
+            .collect();
 
-        let df = df.select(vec![
-            greatest.call(values)
-        ]).unwrap();
-
-        df.clone().show().await.unwrap();
+        let df = df.select(expressions).unwrap();
 
         let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap().transpose();
 
-        assert_eq!(results, vec![
-            vec![Some(vec![Some(2), Some(1)])]
-        ]);
+        assert_eq!(results, vec![vec![
+            Some(vec![Some(2), Some(100)]),
+            Some(vec![Some(1), Some(200)]),
+            Some(vec![Some(6), Some(200)]),
+            Some(vec![None, Some(200)]),
+            Some(vec![None]),
+            Some(vec![Some(1)]),
+            Some(vec![Some(0), Some(4)]),
+            Some(vec![Some(0)]),
+        ]]);
     }
 
     #[tokio::test]

@@ -32,7 +32,6 @@ mod validation_tests {
     #[tokio::test]
     async fn test_incompatible_types() {
 
-
         // TODO - add more types, there are a lot more
         // the first element is the type that is incompatible with the rest
         let cases = vec![
