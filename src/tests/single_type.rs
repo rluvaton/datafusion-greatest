@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use datafusion::arrow::array::RecordBatch;
+    use crate::tests::utils::{create_context, create_primitive_array, find_greatest, generate_optional_values, generate_string_values, get_primitive_result_as_matrix, get_string_result_as_matrix};
+    use datafusion::arrow::array::{ArrayRef, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type};
-    use crate::tests::utils::{create_context, create_primitive_array, find_greatest, generate_optional_values, get_result_as_matrix};
-    use datafusion::arrow::array::ArrayRef;
     use datafusion_expr::col;
     use rand::Rng;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn i8_without_nulls() {
@@ -25,7 +25,7 @@ mod tests {
 
         let df = df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int8Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -48,7 +48,7 @@ mod tests {
 
         let df = df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int8Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -73,7 +73,7 @@ mod tests {
 
         let df = df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int16Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int16Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -98,7 +98,7 @@ mod tests {
 
         let df = df.clone().select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int16Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int16Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -123,7 +123,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int32Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int32Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -148,7 +148,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int32Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int32Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -172,7 +172,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int64Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int64Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -196,7 +196,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Int64Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int64Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -221,7 +221,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Float32Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -246,7 +246,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Float32Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -271,7 +271,7 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Float64Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Float64Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
@@ -296,7 +296,57 @@ mod tests {
 
         let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
 
-        let results = get_result_as_matrix::<Float64Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Float64Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn string_without_nulls() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_string_values(100, 1..20, Some(0.0));
+        let b_vec = generate_string_values(100, 1..20, Some(0.0));
+        let a: ArrayRef = Arc::new(StringArray::from(a_vec.clone()));
+        let b: ArrayRef = Arc::new(StringArray::from(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_string_result_as_matrix(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn string_with_nulls() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_string_values(100, 1..20, Some(0.5));
+        let b_vec = generate_string_values(100, 1..20, Some(0.5));
+        let a: ArrayRef = Arc::new(StringArray::from(a_vec.clone()));
+        let b: ArrayRef = Arc::new(StringArray::from(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_string_result_as_matrix(df).await.unwrap();
 
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])

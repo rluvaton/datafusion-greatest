@@ -5,7 +5,7 @@ mod scalars_tests {
     /// This does not include columns
     ///
 
-    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_result_as_matrix, parse_single_column};
+    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_primitive_result_as_matrix, parse_single_column, parse_string_column};
     use datafusion::arrow::datatypes::{DataType, Float32Type, Float64Type, Int64Type, Int8Type};
     use datafusion_common::ScalarValue;
     use datafusion_expr::lit;
@@ -19,7 +19,7 @@ mod scalars_tests {
 
         let df = df.select(vec![greatest.call(vec![lit(2i8), lit(10i8)])]).unwrap();
 
-        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap();
+        let results = get_primitive_result_as_matrix::<Int8Type>(df).await.unwrap();
 
         assert_eq!(results, vec![
             vec![Some(10)]
@@ -62,7 +62,7 @@ mod scalars_tests {
             two_none_one_integer_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
         ].concat()).unwrap();
 
-        let results = get_result_as_matrix::<Int8Type>(df).await.unwrap().transpose();
+        let results = get_primitive_result_as_matrix::<Int8Type>(df).await.unwrap().transpose();
 
         assert_eq!(results, vec![[
             vec![Some(3); only_integers_permutations.len()],
@@ -93,7 +93,7 @@ mod scalars_tests {
             two_none_one_f32_permutations.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
         ].concat()).unwrap();
 
-        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
+        let results = get_primitive_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
 
         assert_eq!(results, vec![[
             vec![Some(3f32); only_f32_permutations.len()],
@@ -121,7 +121,7 @@ mod scalars_tests {
             values.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
         ].concat()).unwrap();
 
-        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
+        let results = get_primitive_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
 
         // NaN is always the greatest, even if there is infinity
         for result in results {
@@ -162,6 +162,9 @@ mod scalars_tests {
             // f32, f64, i8, i16, i32, i64 all in the bounds of f64
             greatest.call(vec![lit(f32::MAX), lit(f64::MAX), lit(i8::MAX), lit(i16::MAX), lit(i32::MAX), lit(i64::MAX)]),
 
+            // string
+            greatest.call(vec![lit("hey"), lit("you")]),
+
         ]).unwrap();
 
         let results = get_combined_results(df).await.unwrap();
@@ -174,6 +177,7 @@ mod scalars_tests {
         assert_eq!(parse_single_column::<Float32Type>(columns.remove(0)), vec![Some(f32::MAX)]);
         assert_eq!(parse_single_column::<Float64Type>(columns.remove(0)), vec![Some(f32::MAX as f64)]);
         assert_eq!(parse_single_column::<Float64Type>(columns.remove(0)), vec![Some(f64::MAX)]);
+        assert_eq!(parse_string_column(columns.remove(0)), vec![Some("you".to_string())]);
 
         // If this failed it means that we forgot to assert some columns
         assert_eq!(columns.len(), 0, "There should be no more columns left in the results");

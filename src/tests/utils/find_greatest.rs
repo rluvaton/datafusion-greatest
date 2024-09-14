@@ -2,13 +2,14 @@ use std::any::{Any, TypeId};
 use crate::helpers::Transpose;
 
 /// Results are returned as a matrix where each row corresponds to a column in the DataFrame.
-pub(crate) fn find_greatest<T: PartialOrd + Copy + 'static>(results: Vec<Vec<T>>) -> Vec<T> {
+pub(crate) fn find_greatest<T: PartialOrd + Clone + 'static>(results: Vec<Vec<T>>) -> Vec<T> {
     let rows = results.transpose();
 
     rows.iter().map(|row| {
-        let max: T = row[0];
+        let max: T = row[0].clone();
 
-        row.iter().fold(max, |acc, &x| {
+        row.iter().fold(max, |acc, x| {
+            let x = x.clone();
             if x > acc {
                 x
             } else {
@@ -121,6 +122,22 @@ mod tests {
         assert_eq!(actual.remove(0).unwrap().is_nan(), true);
 
         assert_eq!(actual, vec![]);
+    }
+
+    #[test]
+    fn test_strings() {
+        let a_vec = vec![Some("AR".to_string()), None, Some("BS".to_string()), Some("CL".to_string())];
+        let b_vec = vec![Some("LA".to_string()), Some("BC".to_string()), None, Some("D2".to_string())];
+
+        let mut actual = find_greatest(vec![a_vec, b_vec]);
+
+        assert_eq!(actual.remove(0), Some("LA".to_string()));
+        assert_eq!(actual.remove(0), Some("BC".to_string()));
+        assert_eq!(actual.remove(0), Some("BS".to_string()));
+        assert_eq!(actual.remove(0), Some("D2".to_string()));
+
+        assert_eq!(actual, vec![]);
+
     }
 
 }
