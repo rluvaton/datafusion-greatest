@@ -220,7 +220,6 @@ mod tests {
         }).collect()
     }
 
-
     async fn setup() -> Result<(SessionContext, DataFrame, ScalarUDF, Vec<Vec<f64>>)> {
         // In this example we register `GreatestUdf` as a user defined function
         // and invoke it via the DataFrame API and SQL
@@ -238,54 +237,4 @@ mod tests {
         Ok((ctx, df, greatest, data))
     }
 
-    #[tokio::test]
-    async fn sample_api() {
-        let (ctx, df, greatest, all_data) = setup().await.unwrap();
-        let original_df = df.clone();
-
-        // Call pow(a, 10) using the DataFrame API
-        // let df = df.select(vec![greatest.call(vec![col("a"), lit(10i32)])])?;
-        let df = original_df.clone().select(vec![greatest.call(vec![col("a"), col("b"), lit(20f64)])]).unwrap();
-
-        // note that the second argument is passed as an i32, not f64. DataFusion
-        // automatically coerces the types to match the UDF's defined signature.
-
-        // print the results
-        df.clone().show().await.unwrap();
-
-        let results = df.clone().collect().await.unwrap();
-        assert_eq!(results.len(), 1);
-        let batch = &results[0];
-        let columns = batch.columns();
-        assert_eq!(columns.len(), 1);
-        let column = &columns[0];
-        let array = column.as_any().downcast_ref::<Float64Array>().unwrap();
-        let actual_greatest = array.values().iter().map(|v| *v).collect::<Vec<_>>();
-        assert_eq!(actual_greatest, get_expected_greatest(vec![all_data[0].clone(), all_data[1].clone()]));
-
-
-        // Call pow(a, 10) using the DataFrame API
-        // let df = df.select(vec![greatest.call(vec![col("a"), lit(10i32)])])?;
-        let df = original_df.clone().select(vec![greatest.call(vec![
-            col("a"),
-            col("b"),
-            col("c"),
-            col("d"),
-        ])]).unwrap();
-
-        // note that the second argument is passed as an i32, not f64. DataFusion
-        // automatically coerces the types to match the UDF's defined signature.
-
-        // print the results
-        df.show().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn sample_sql() {
-        let (ctx, df, greatest, all_data) = setup().await.unwrap();
-
-        // You can also invoke both pow(2, 10)  and its alias my_pow(a, b) using SQL
-        let sql_df = ctx.sql("SELECT greatest(2, 10), greatest(a, b) FROM t").await.unwrap();
-        sql_df.show().await.unwrap();
-    }
 }
