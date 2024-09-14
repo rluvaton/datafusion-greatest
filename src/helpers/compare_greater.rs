@@ -1,6 +1,4 @@
-use crate::traits::NullBufferExt;
 use datafusion::arrow::array::{make_comparator, Array, ArrayRef, BooleanArray};
-use datafusion::arrow::buffer::NullBuffer;
 use datafusion::arrow::compute::SortOptions;
 use datafusion::error::Result;
 

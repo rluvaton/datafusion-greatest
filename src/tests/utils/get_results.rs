@@ -2,7 +2,6 @@ use datafusion::arrow::array::{Array, ArrayRef, ArrowPrimitiveType, AsArray};
 use datafusion::arrow::compute::concat_batches;
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::error::Result;
-use datafusion::parquet::data_type::AsBytes;
 use datafusion::prelude::DataFrame;
 
 /// This will return the result of a DataFrame as a matrix.

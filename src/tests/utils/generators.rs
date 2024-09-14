@@ -1,10 +1,9 @@
-use std::any::TypeId;
 use std::ops::Range;
 use datafusion::arrow::array::{PrimitiveArray, StringArray};
 use datafusion::arrow::buffer::NullBuffer;
 use datafusion::arrow::datatypes::ArrowPrimitiveType;
 use rand::distributions::{Alphanumeric, Standard};
-use rand::Rng;
+use rand::{thread_rng, Rng, distributions::Distribution};
 use std::sync::Arc;
 
 pub(crate) fn create_primitive_array<T: ArrowPrimitiveType>(values: Vec<Option<T::Native>>) -> Arc<PrimitiveArray<T>> {
@@ -20,13 +19,13 @@ pub(crate) fn create_string_array(values: Vec<Option<String>>) -> Arc<StringArra
     Arc::new(StringArray::from(values))
 }
 
-pub(crate) fn generate_values<T>(size: usize) -> Vec<T> where Standard: rand::distributions::Distribution<T> {
-    let mut rng = rand::thread_rng();
+pub(crate) fn generate_values<T>(size: usize) -> Vec<T> where Standard: Distribution<T> {
+    let mut rng = thread_rng();
     Vec::from_iter((0..size).map(|_| rng.gen::<T>()))
 }
 
-pub(crate) fn generate_optional_values<T>(size: usize, probability_of_none: Option<f64>) -> Vec<Option<T>> where Standard: rand::distributions::Distribution<T> {
-    let mut rng = rand::thread_rng();
+pub(crate) fn generate_optional_values<T>(size: usize, probability_of_none: Option<f64>) -> Vec<Option<T>> where Standard: Distribution<T> {
+    let mut rng = thread_rng();
 
     Vec::from_iter((0..size).map(|_| {
         if rng.gen_bool(probability_of_none.unwrap_or(0.5)) {
@@ -38,7 +37,7 @@ pub(crate) fn generate_optional_values<T>(size: usize, probability_of_none: Opti
 }
 
 pub(crate) fn generate_string_values(size: usize, length_range: Range<usize>, probability_of_none: Option<f64>) -> Vec<Option<String>> {
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     Vec::from_iter((0..size).map(|_| {
         if rng.gen_bool(probability_of_none.unwrap_or(0.5)) {

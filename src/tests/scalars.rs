@@ -48,10 +48,10 @@ mod scalars_tests {
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
         // Only integers - 1, 2, 3 => 3
-        let only_integers_permutations = vec_with_lit![(1i8), (2i8), (3i8)].permutation(3);
+        let only_integers_permutations = vec_with_lit![1i8, 2i8, 3i8].permutation(3);
 
         // 1 None, 2 integers - 1, None, 5 => 5
-        let two_integers_one_none_permutations = vec_with_lit![(1i8), (ScalarValue::Null), (5i8)].permutation(3);
+        let two_integers_one_none_permutations = vec_with_lit![1i8, ScalarValue::Null, 5i8].permutation(3);
 
         // 2 None, 1 integer - None, None, 1 => 1
         let two_none_one_integer_permutations = vec_with_lit![ScalarValue::Null, ScalarValue::Null, 1i8].permutation(3);
@@ -143,7 +143,7 @@ mod scalars_tests {
             greatest.call(vec_with_lit![4i8, 2i16, 3i32, -2i64]),
 
             // i8, i16, i32, i64 all in the bounds of i16
-            greatest.call(vec_with_lit![(i8::MAX), (134i16), (i16::MAX as i32), (i16::MIN as i64)]),
+            greatest.call(vec_with_lit![i8::MAX, 134i16, i16::MAX as i32, i16::MIN as i64]),
 
             // i8, i16, i32, i64 all in the bounds of i32
             greatest.call(vec_with_lit![i8::MAX, i16::MAX, i32::MAX, i32::MIN as i64]),

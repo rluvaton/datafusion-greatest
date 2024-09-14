@@ -1,4 +1,3 @@
-use std::any::{Any, TypeId};
 use crate::helpers::Transpose;
 
 /// Results are returned as a matrix where each row corresponds to a column in the DataFrame.
