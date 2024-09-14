@@ -4,17 +4,15 @@ mod tests {
     use datafusion::arrow::array::{ArrayRef, ListArray, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type};
     use datafusion_expr::col;
-    use rand::Rng;
     use std::sync::Arc;
     use crate::helpers::Transpose;
 
     #[tokio::test]
     async fn i8_without_nulls() {
         let (ctx, greatest) = create_context();
-        let mut rng = rand::thread_rng();
 
-        let a_vec = Vec::from_iter((0..8).map(|_| Some(rng.gen::<i8>())));
-        let b_vec = Vec::from_iter((0..8).map(|_| Some(rng.gen::<i8>())));
+        let a_vec = generate_optional_values::<i8>(100, Some(0.0));
+        let b_vec = generate_optional_values::<i8>(100, Some(0.0));
         let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
         let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
 
@@ -37,8 +35,8 @@ mod tests {
     async fn i8_with_nulls() {
         let (ctx, greatest) = create_context();
 
-        let a_vec = vec![Some(1), None, Some(-10), Some(4), None, Some(120), Some(7), Some(30)];
-        let b_vec = vec![Some(5), None, None, Some(-2), Some(10), Some(1), Some(23), None];
+        let a_vec = generate_optional_values::<i8>(100, Some(0.5));
+        let b_vec = generate_optional_values::<i8>(100, Some(0.5));
         let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
         let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
         let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
