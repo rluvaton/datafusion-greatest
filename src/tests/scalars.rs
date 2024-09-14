@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod scalars_tests {
+    use std::ops::Deref;
     /// These tests check that calling greatest only on scalars values
     ///
     /// This does not include columns
     ///
 
-    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_primitive_result_as_matrix, parse_single_column, parse_string_column};
-    use datafusion::arrow::datatypes::{DataType, Float32Type, Float64Type, Int64Type, Int8Type};
+    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, get_list_result_as_matrix, get_primitive_result_as_matrix, parse_primitive_column, parse_string_column};
+    use datafusion::arrow::datatypes::{DataType, Float32Type, Float64Type, Int32Type, Int64Type, Int8Type};
     use datafusion_common::ScalarValue;
+    use datafusion_expr::lit;
     use crate::helpers::{Permutation, Transpose};
     use crate::vec_with_lit;
 
@@ -132,6 +134,30 @@ mod scalars_tests {
     }
 
     #[tokio::test]
+    async fn lists_tests() {
+        let (ctx, greatest) = create_context();
+
+        let df = create_empty_data_frame(&ctx, true).unwrap();
+
+        let values = vec_with_lit![
+            ScalarValue::List(ScalarValue::new_list(&vec![ScalarValue::Int32(Some(1)), ScalarValue::Int32(Some(3))], &DataType::Int32, true)),
+            ScalarValue::List(ScalarValue::new_list(&vec![ScalarValue::Int32(Some(2)), ScalarValue::Int32(Some(1))], &DataType::Int32, true)),
+        ];
+
+        let df = df.select(vec![
+            greatest.call(values)
+        ]).unwrap();
+
+        df.clone().show().await.unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap().transpose();
+
+        assert_eq!(results, vec![
+            vec![Some(vec![Some(2), Some(1)])]
+        ]);
+    }
+
+    #[tokio::test]
     async fn multiple_types() {
         let (ctx, greatest) = create_context();
 
@@ -167,13 +193,13 @@ mod scalars_tests {
         let results = get_combined_results(df).await.unwrap();
         let mut columns: Vec<_> = results.columns().iter().collect();
 
-        assert_eq!(parse_single_column::<Int64Type>(columns.remove(0)), vec![Some(4i64)]);
-        assert_eq!(parse_single_column::<Int64Type>(columns.remove(0)), vec![Some(i16::MAX as i64)]);
-        assert_eq!(parse_single_column::<Int64Type>(columns.remove(0)), vec![Some(i32::MAX as i64)]);
-        assert_eq!(parse_single_column::<Int64Type>(columns.remove(0)), vec![Some(i64::MAX)]);
-        assert_eq!(parse_single_column::<Float32Type>(columns.remove(0)), vec![Some(f32::MAX)]);
-        assert_eq!(parse_single_column::<Float64Type>(columns.remove(0)), vec![Some(f32::MAX as f64)]);
-        assert_eq!(parse_single_column::<Float64Type>(columns.remove(0)), vec![Some(f64::MAX)]);
+        assert_eq!(parse_primitive_column::<Int64Type>(columns.remove(0)), vec![Some(4i64)]);
+        assert_eq!(parse_primitive_column::<Int64Type>(columns.remove(0)), vec![Some(i16::MAX as i64)]);
+        assert_eq!(parse_primitive_column::<Int64Type>(columns.remove(0)), vec![Some(i32::MAX as i64)]);
+        assert_eq!(parse_primitive_column::<Int64Type>(columns.remove(0)), vec![Some(i64::MAX)]);
+        assert_eq!(parse_primitive_column::<Float32Type>(columns.remove(0)), vec![Some(f32::MAX)]);
+        assert_eq!(parse_primitive_column::<Float64Type>(columns.remove(0)), vec![Some(f32::MAX as f64)]);
+        assert_eq!(parse_primitive_column::<Float64Type>(columns.remove(0)), vec![Some(f64::MAX)]);
         assert_eq!(parse_string_column(columns.remove(0)), vec![Some("you".to_string())]);
 
         // If this failed it means that we forgot to assert some columns

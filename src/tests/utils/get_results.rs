@@ -17,7 +17,7 @@ pub(crate) async fn get_primitive_result_as_matrix<PrimitiveType: ArrowPrimitive
         columns
             .columns()
             .iter()
-            .map(|column| parse_single_column::<PrimitiveType>(column))
+            .map(|column| parse_primitive_column::<PrimitiveType>(column))
             .collect::<Vec<_>>()
     )
 }
@@ -40,6 +40,24 @@ pub(crate) async fn get_string_result_as_matrix(df: DataFrame) -> Result<Vec<Vec
     )
 }
 
+/// This will return the result of a DataFrame as a matrix.
+/// Each row in the matrix corresponds to a column in the DataFrame.
+/// Each column in the matrix corresponds to a row in the DataFrame.
+///
+/// If you want to have the rows in the matrix to correspond to the rows in the DataFrame,
+/// you can use the `transpose` method on the resulting matrix.
+pub(crate) async fn get_list_result_as_matrix<T: ArrowPrimitiveType>(df: DataFrame) -> Result<Vec<Vec<Option<Vec<Option<T::Native>>>>>> {
+    let columns = get_combined_results(df).await?;
+
+    Ok(
+        columns
+            .columns()
+            .iter()
+            .map(|column| parse_list_column::<T>(column))
+            .collect::<Vec<_>>()
+    )
+}
+
 pub(crate) async fn get_combined_results<'a>(df: DataFrame) -> Result<RecordBatch> {
     let schema = df.schema().clone();
 
@@ -50,10 +68,10 @@ pub(crate) async fn get_combined_results<'a>(df: DataFrame) -> Result<RecordBatc
 ///
 /// # Safety
 /// This will panic if the column is not of the expected type.
-pub(crate) fn parse_many_columns<PrimitiveType: ArrowPrimitiveType>(columns: &[&ArrayRef]) -> Vec<Vec<Option<PrimitiveType::Native>>> {
+pub(crate) fn parse_many_primitives_columns<PrimitiveType: ArrowPrimitiveType>(columns: &[&ArrayRef]) -> Vec<Vec<Option<PrimitiveType::Native>>> {
     columns
         .iter()
-        .map(|column| parse_single_column::<PrimitiveType>(column))
+        .map(|column| parse_primitive_column::<PrimitiveType>(column))
         .collect::<Vec<_>>()
 }
 
@@ -61,7 +79,7 @@ pub(crate) fn parse_many_columns<PrimitiveType: ArrowPrimitiveType>(columns: &[&
 ///
 /// # Safety
 /// This will panic if the column is not of the expected type.
-pub(crate) fn parse_single_column<PrimitiveType: ArrowPrimitiveType>(column: &ArrayRef) -> Vec<Option<PrimitiveType::Native>> {
+pub(crate) fn parse_primitive_column<PrimitiveType: ArrowPrimitiveType>(column: &ArrayRef) -> Vec<Option<PrimitiveType::Native>> {
     assert_eq!(column.data_type(), &PrimitiveType::DATA_TYPE);
 
     if column.data_type().is_null() {
@@ -94,6 +112,27 @@ pub(crate) fn parse_string_column(column: &ArrayRef) -> Vec<Option<String>> {
                 None
             } else {
                 Some(values.value(index).to_string())
+            }
+        })
+        .collect::<Vec<_>>()
+
+}
+
+/// Parse single column
+pub(crate) fn parse_list_column<T: ArrowPrimitiveType>(column: &ArrayRef) -> Vec<Option<Vec<Option<T::Native>>>> {
+    if column.data_type().is_null() {
+        return vec![None; column.len()];
+    }
+
+    let values = column.as_list_opt::<i32>()
+        .expect("Unable to downcast to expected StringArray");
+
+    (0..values.len())
+        .map(|index| {
+            if column.is_null(index) {
+                None
+            } else {
+                Some(parse_primitive_column::<T>(&values.value(index)))
             }
         })
         .collect::<Vec<_>>()

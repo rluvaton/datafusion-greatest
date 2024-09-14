@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod coerce_tests {
     use crate::helpers::Permutation;
-    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, parse_many_columns};
+    use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, parse_many_primitives_columns};
     use crate::vec_with_lit;
     use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type};
 
@@ -35,22 +35,22 @@ mod coerce_tests {
 
 
         let (i8_results, columns) = columns.split_at(i8.len());
-        parse_many_columns::<Int8Type>(i8_results);
+        parse_many_primitives_columns::<Int8Type>(i8_results);
 
         let (i16_results, columns) = columns.split_at(i16.len());
-        parse_many_columns::<Int16Type>(i16_results);
+        parse_many_primitives_columns::<Int16Type>(i16_results);
 
         let (i32_results, columns) = columns.split_at(i32.len());
-        parse_many_columns::<Int32Type>(i32_results);
+        parse_many_primitives_columns::<Int32Type>(i32_results);
 
         let (i64_results, columns) = columns.split_at(i64.len());
-        parse_many_columns::<Int64Type>(i64_results);
+        parse_many_primitives_columns::<Int64Type>(i64_results);
 
         let (f32_results, columns) = columns.split_at(f32.len());
-        parse_many_columns::<Float32Type>(f32_results);
+        parse_many_primitives_columns::<Float32Type>(f32_results);
 
         let (f64_results, columns) = columns.split_at(f64.len());
-        parse_many_columns::<Float64Type>(f64_results);
+        parse_many_primitives_columns::<Float64Type>(f64_results);
 
         // If this failed it means that we forgot to assert some columns
         assert_eq!(columns.len(), 0, "There should be no more columns left in the results");
@@ -89,19 +89,19 @@ mod coerce_tests {
         let columns: Vec<_> = results.columns().iter().collect();
 
         let (i16_results, columns) = columns.split_at(i8_and_u8.len());
-        parse_many_columns::<Int16Type>(i16_results);
+        parse_many_primitives_columns::<Int16Type>(i16_results);
 
         let (i32_results, columns) = columns.split_at(i16_and_u16.len());
-        parse_many_columns::<Int32Type>(i32_results);
+        parse_many_primitives_columns::<Int32Type>(i32_results);
 
         let (i64_results, columns) = columns.split_at(i32_and_u32.len());
-        parse_many_columns::<Int64Type>(i64_results);
+        parse_many_primitives_columns::<Int64Type>(i64_results);
 
         let (f32_results, columns) = columns.split_at(i64_and_u64_with_f32.len());
-        parse_many_columns::<Float32Type>(f32_results);
+        parse_many_primitives_columns::<Float32Type>(f32_results);
 
         let (f64_results, columns) = columns.split_at(i64_and_u64_with_f64.len());
-        parse_many_columns::<Float64Type>(f64_results);
+        parse_many_primitives_columns::<Float64Type>(f64_results);
 
         // If this failed it means that we forgot to assert some columns
         assert_eq!(columns.len(), 0, "There should be no more columns left in the results");
