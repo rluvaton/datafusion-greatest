@@ -1,7 +1,8 @@
 
 #[macro_export]
 macro_rules! vec_with_lit {
-    ( $( $x:expr ),* ) => {
+
+    ( $( $x:expr ),* $(,)?) => {
         vec![$( datafusion_expr::lit($x) ),*]
     };
 }
@@ -13,6 +14,8 @@ mod tests {
     #[test]
     fn test_vec_with_lit() {
         assert_eq!(vec_with_lit![1, 2, 3], vec![lit(1), lit(2), lit(3)]);
-        assert_eq!(vec_with_lit![1, 2, 3], vec![lit(1), lit(2), lit(3),]);
+
+        // Allow comma at the end
+        assert_eq!(vec_with_lit![1, 2, 3,], vec![lit(1), lit(2), lit(3)]);
     }
 }

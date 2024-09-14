@@ -57,7 +57,6 @@ mod coerce_tests {
     }
 
 
-
     #[tokio::test]
     async fn have_incompatible_type() {
         let (ctx, greatest) = create_context();
