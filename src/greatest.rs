@@ -1,18 +1,13 @@
-use crate::helpers::{find_coerced_type, is_larger_or_equal, keep_larger};
+use crate::helpers::{find_coerced_type, keep_larger};
+use crate::traits::NullBufferExt;
+use datafusion::arrow::array::{new_null_array, Array};
+use datafusion::arrow::datatypes::DataType;
 use datafusion::error::Result;
 use datafusion::logical_expr::Volatility;
-use std::any::Any;
-use datafusion::arrow::array::{make_comparator, new_null_array, Array, BooleanArray};
-use datafusion::arrow::buffer::NullBuffer;
-use datafusion::arrow::compute::kernels::cmp;
-use datafusion::arrow::compute::{and, SortOptions};
-use datafusion::arrow::compute::kernels::zip::zip;
-use datafusion::arrow::datatypes::DataType;
-use datafusion::arrow::error::ArrowError;
-use datafusion_common::{exec_err, DataFusionError};
-use datafusion_expr::{ColumnarValue, ScalarUDFImpl, Signature};
+use datafusion_common::plan_err;
 use datafusion_expr::sort_properties::{ExprProperties, SortProperties};
-use crate::traits::NullBufferExt;
+use datafusion_expr::{ColumnarValue, ScalarUDFImpl, Signature};
+use std::any::Any;
 
 /// This example shows how to use the full ScalarUDFImpl API to implement a user
 /// defined function. As in the `simple_udf.rs` example, this struct implements
@@ -31,7 +26,10 @@ impl GreatestUdf {
     /// Create a new instance of the `GreatestUdf` struct
     pub(crate) fn new() -> Self {
         Self {
-            signature: Signature::user_defined(Volatility::Immutable),
+            signature: Signature::user_defined(
+                // Deterministic
+                Volatility::Immutable
+            ),
             aliases: vec![],
         }
     }
@@ -107,7 +105,6 @@ impl ScalarUDFImpl for GreatestUdf {
                         continue;
                     }
 
-
                     // TODO - this has bad performance
                     let last_value = value.to_array_of_size(return_array_size)?;
                     current_value = keep_larger(last_value, current_value)?;
@@ -133,7 +130,7 @@ impl ScalarUDFImpl for GreatestUdf {
         // make sure that the input types has at least 2 elements
         // Spark source: https://github.com/apache/spark/blob/8023504e69fdd037dea002e961b960fd9fa662ba/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/arithmetic.scala#L1283-L1286
         if input_types.len() < 2 {
-            return exec_err!(
+            return plan_err!(
                 "greatest was called with {} arguments. It requires at least 2.",
                 input_types.len()
             );
@@ -152,12 +149,12 @@ impl ScalarUDFImpl for GreatestUdf {
 #[cfg(test)]
 mod tests {
     use crate::greatest::GreatestUdf;
+    use datafusion::arrow::array::{ArrayRef, Float64Array, RecordBatch};
     use datafusion::dataframe::DataFrame;
     use datafusion::error::Result;
     use datafusion::prelude::SessionContext;
-    use datafusion_expr::{col, lit, ScalarUDF};
+    use datafusion_expr::ScalarUDF;
     use std::sync::Arc;
-    use datafusion::arrow::array::{ArrayRef, Float64Array, RecordBatch};
 
     /// create local execution context with an in-memory table:
     ///

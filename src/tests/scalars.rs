@@ -32,7 +32,7 @@ mod scalars_tests {
 
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
-        let df = df.select(vec![vec![greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(ScalarValue::Null)])]].concat()).unwrap();
+        let df = df.select(vec![greatest.call(vec![lit(ScalarValue::Null), lit(ScalarValue::Null), lit(ScalarValue::Null)])]).unwrap();
 
         let results = get_result_as_matrix::<Int8Type>(df).await.unwrap().transpose();
 

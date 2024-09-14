@@ -1,6 +1,7 @@
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::type_coercion::functions::can_coerce_from;
 use datafusion::error::Result;
+use datafusion_common::plan_err;
 
 pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
     let mut non_null_types = data_types.iter().filter(|t| {
@@ -23,7 +24,7 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
             continue;
         }
 
-        // TODO - cache?
+        // TODO(rluvaton): It might be beneficial to cache the result of can_coerce_from
         let can_coerce_current_to_type = can_coerce_from(t, current_type);
         let can_coerce_type_to_current = can_coerce_from(current_type, t);
 
@@ -35,8 +36,7 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
         // If we can't coerce from the current type to the new type and vice versa, we can't continue
         // as we can't find a common type
         if !can_coerce_current_to_type && !can_coerce_type_to_current {
-            // TODO - use better error type so the user will understand it's their input
-            return Err(datafusion::error::DataFusionError::Internal("Cannot find a common type for arguments".to_string()));
+            return plan_err!("Cannot find a common type for arguments, incompatible {} and {}", current_type, t);
         }
 
         // i64 -> i32 (no) | i32 -> i64 (yes)
