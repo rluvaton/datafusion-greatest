@@ -28,7 +28,25 @@ pub(crate) async fn get_combined_results<'a>(df: DataFrame) -> Result<RecordBatc
     concat_batches(schema.as_ref(), df.collect().await?.iter()).map_err(|e| e.into())
 }
 
+
+/// Parse many columns with the same type
+///
+/// # Safety
+/// This will panic if the column is not of the expected type.
+pub(crate) fn parse_many_columns<PrimitiveType: ArrowPrimitiveType>(columns: &[&ArrayRef]) -> Vec<Vec<Option<PrimitiveType::Native>>> {
+    columns
+        .iter()
+        .map(|column| parse_single_column::<PrimitiveType>(column))
+        .collect::<Vec<_>>()
+}
+
+/// Parse single column
+///
+/// # Safety
+/// This will panic if the column is not of the expected type.
 pub(crate) fn parse_single_column<PrimitiveType: ArrowPrimitiveType>(column: &ArrayRef) -> Vec<Option<PrimitiveType::Native>> {
+    assert_eq!(column.data_type(), &PrimitiveType::DATA_TYPE);
+
     if column.data_type().is_null() {
         return vec![None; column.len()];
     }

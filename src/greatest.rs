@@ -1,5 +1,4 @@
 use crate::helpers::{find_coerced_type, keep_larger};
-use crate::traits::NullBufferExt;
 use datafusion::arrow::array::{new_null_array, Array};
 use datafusion::arrow::datatypes::DataType;
 use datafusion::error::Result;
@@ -21,7 +20,6 @@ pub struct GreatestUdf {
     aliases: Vec<String>,
 }
 
-
 impl GreatestUdf {
     /// Create a new instance of the `GreatestUdf` struct
     pub(crate) fn new() -> Self {
@@ -34,7 +32,6 @@ impl GreatestUdf {
         }
     }
 }
-
 
 impl ScalarUDFImpl for GreatestUdf {
     /// We implement as_any so that we can downcast the ScalarUDFImpl trait object
@@ -73,6 +70,9 @@ impl ScalarUDFImpl for GreatestUdf {
         assert!(args.len() >= 2);
 
         let return_type = args[0].data_type();
+
+        // We can add some fast path to avoid computation if we have a scalar that is the maximum value
+        // but we will skip it for now as it's not the common case
 
         // TODO - different size arrays
         let return_array_size = args
@@ -144,98 +144,3 @@ impl ScalarUDFImpl for GreatestUdf {
     }
 }
 
-/// TODO - test not represented 0.3 and 0.29999999999999999
-
-#[cfg(test)]
-mod tests {
-    use crate::greatest::GreatestUdf;
-    use datafusion::arrow::array::{ArrayRef, Float64Array, RecordBatch};
-    use datafusion::dataframe::DataFrame;
-    use datafusion::error::Result;
-    use datafusion::prelude::SessionContext;
-    use datafusion_expr::ScalarUDF;
-    use std::sync::Arc;
-
-    /// create local execution context with an in-memory table:
-    ///
-    /// ```text
-    /// +-----+-----+
-    /// | a   | b   |
-    /// +-----+-----+
-    /// |  2  |  10 |
-    /// |  3  |  2  |
-    /// |  4  |  5  |
-    /// |  5  |  1  |
-    /// |  6  | 102 |
-    /// |  7  |  4  |
-    /// | 150 |  6  |
-    /// |  1  |  2  |
-    /// +-----+-----+
-    /// ```
-    fn create_context() -> Result<(SessionContext, Vec<Vec<f64>>)> {
-        let a_vec = vec![2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 150.0, 1.0];
-        let b_vec = vec![10.0, 2.0, 5.0, 1.0, 102.0, 4.0, 6.0, 2.0];
-        let c_vec = vec![3420.0, 10.0, 2.0, 43.0, 3.0, 56.0, 12.0, 33.0];
-        let d_vec = vec![2.0, 2.0, 3.0, 5.0, 9.0, 8.0, 6.0, 244.0];
-        // define data.
-        let a: ArrayRef = Arc::new(Float64Array::from(a_vec.clone()));
-        let b: ArrayRef = Arc::new(Float64Array::from(b_vec.clone()));
-        let c: ArrayRef = Arc::new(Float64Array::from(c_vec.clone()));
-        let d: ArrayRef = Arc::new(Float64Array::from(d_vec.clone()));
-        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b), ("c", c), ("d", d)])?;
-
-        // declare a new context. In Spark API, this corresponds to a new SparkSession
-        let ctx = SessionContext::new();
-
-        // declare a table in memory. In Spark API, this corresponds to createDataFrame(...).
-        ctx.register_batch("t", batch)?;
-
-
-        Ok((ctx, vec![
-            a_vec,
-            b_vec,
-            c_vec,
-            d_vec,
-        ]))
-    }
-
-    fn get_expected_greatest(cols: Vec<Vec<f64>>) -> Vec<f64> {
-
-        // Convert vectors of columns to vectors of rows
-        let mut rows = vec![];
-        for i in 0..cols.len() {
-            for j in 0..cols[i].len() {
-                if rows.len() <= j {
-                    rows.push(vec![]);
-                }
-                rows[j].push(cols[i][j]);
-            }
-        }
-
-        rows.iter().map(|row| {
-            [row.clone(), vec![f64::NAN]].concat()
-                .into_iter()
-                .reduce(f64::max)
-                .unwrap()
-            // *row.iter().max().unwrap()
-        }).collect()
-    }
-
-    async fn setup() -> Result<(SessionContext, DataFrame, ScalarUDF, Vec<Vec<f64>>)> {
-        // In this example we register `GreatestUdf` as a user defined function
-        // and invoke it via the DataFrame API and SQL
-        let (ctx, data) = create_context()?;
-
-        // create the UDF
-        let greatest = ScalarUDF::from(GreatestUdf::new());
-
-        // register the UDF with the context so it can be invoked by name and from SQL
-        ctx.register_udf(greatest.clone());
-
-        // get a DataFrame from the context for scanning the "t" table
-        let df = ctx.table("t").await?;
-
-        Ok((ctx, df, greatest, data))
-    }
-
-}

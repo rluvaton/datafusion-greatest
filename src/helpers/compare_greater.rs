@@ -7,40 +7,6 @@ use datafusion::error::Result;
 use datafusion::arrow::compute::kernels::cmp;
 use datafusion::arrow::compute::kernels::zip::zip;
 
-/// Return boolean array where true is when input1 is greater or equal to input2 and false if not
-pub(crate) fn is_larger_or_equal(input1: &dyn Array, input2: &dyn Array) -> Result<BooleanArray> {
-    // TODO - support nulls
-    // if !input1.data_type().is_nested() {
-    //     return cmp::gt_eq(&input1, &input2); // Use faster vectorised kernel
-    // }
-
-    let sort_options = SortOptions {
-        // We want greatest first
-        descending: true,
-
-        // We want nulls in the end
-        nulls_first: false,
-    };
-
-    let cmp = make_comparator(input1, input2, sort_options)?;
-    let len = input1.len().min(input2.len());
-    let values = (0..len).map(|i| {
-        println!("i: {}", i);
-
-
-        cmp(i, i).is_ge()
-    }).collect();
-
-    // TODO - Don't keep the nulls
-    let nulls = NullBuffer::union_prefer_not_null(input1.nulls(), input2.nulls());
-    println!("input1 nulls: {:?}", input1.nulls());
-    println!("input2 nulls: {:?}", input2.nulls());
-    println!("input1: {:?}", input1);
-    println!("input2: {:?}", input2);
-    println!("nulls: {:?}", nulls);
-    Ok(BooleanArray::new(values, nulls))
-}
-
 /// Return boolean array where `arr[i] = lhs[i] >= rhs[i]` for all i, where `arr` is the result array
 /// Nulls are always considered smaller than any other value
 pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArray> {

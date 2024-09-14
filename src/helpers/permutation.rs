@@ -13,7 +13,7 @@ impl<T: Clone + PartialEq> Permutation for Vec<T> {
         let mut stack = vec![(0, vec![])];
 
         while !stack.is_empty() {
-            let (index, mut permutation) = stack.pop().unwrap();
+            let (index, permutation) = stack.pop().unwrap();
 
             if index == len {
                 result.push(permutation);

@@ -172,13 +172,4 @@ mod tests {
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
         ]);
     }
-
-    #[tokio::test]
-    async fn sample_sql() {
-        let (ctx, df, greatest, all_data) = setup().await.unwrap();
-
-        // You can also invoke both pow(2, 10)  and its alias my_pow(a, b) using SQL
-        let sql_df = ctx.sql("SELECT greatest(2, 10), greatest(a, b) FROM t").await.unwrap();
-        sql_df.show().await.unwrap();
-    }
 }

@@ -53,7 +53,6 @@ mod tests {
             4
         ];
         let cols = vec![col_a, col_b, col_c];
-        let expected = vec![7, 8, 9];
 
         assert_eq!(find_greatest(cols), vec![
             3,
@@ -84,7 +83,6 @@ mod tests {
             4
         ];
         let cols = vec![col_a, col_b, col_c];
-        let expected = vec![7, 8, 9];
 
         assert_eq!(find_greatest(cols), vec![
             3,
