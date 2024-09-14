@@ -3,7 +3,7 @@ mod scalars_and_arrays_tests {
     use crate::helpers::Permutation;
     use crate::tests::utils::{create_context, create_primitive_array, find_greatest, get_primitive_result_as_matrix};
     use datafusion::arrow::array::{ArrayRef, RecordBatch};
-    use datafusion::arrow::datatypes::Int8Type;
+    use datafusion::arrow::datatypes::{Int32Type, Int8Type};
     use datafusion_common::ScalarValue;
     use datafusion_expr::{col, lit};
 
@@ -33,6 +33,66 @@ mod scalars_and_arrays_tests {
 
             assert_eq!(results, vec![
                 find_greatest(vec![a_vec.clone(), b_vec.clone(), vec![Some(5i8); a_vec.len()]])
+            ]);
+        }
+    }
+
+    #[tokio::test]
+    async fn scalar_is_larger_than_all_columns() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = vec![Some(1), Some(4), Some(-8), Some(126)];
+        let b_vec = vec![Some(3), Some(-23), Some(34), Some(3)];
+        let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
+        let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+        let df = ctx.table("t").await.unwrap();
+
+        let greatest_args = vec![col("a"), col("b"), lit(i32::MAX)];
+
+        for args in greatest_args.permutation(greatest_args.len()) {
+            let df = df.clone().select(vec![
+                greatest.call(args)
+            ]).unwrap();
+
+            let results = get_primitive_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+            assert_eq!(results, vec![
+                vec![Some(i32::MAX); a_vec.len()]
+            ]);
+        }
+    }
+
+    #[tokio::test]
+    async fn one_of_the_scalars_are_larger_than_all_columns() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = vec![Some(1), Some(4), Some(-8), Some(126), None, Some(5)];
+        let b_vec = vec![Some(3), Some(-23), Some(34), Some(3), None, Some(5)];
+        let a: ArrayRef = create_primitive_array::<Int8Type>(a_vec.clone());
+        let b: ArrayRef = create_primitive_array::<Int8Type>(b_vec.clone());
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+        let df = ctx.table("t").await.unwrap();
+
+        let greatest_args = vec![col("a"), col("b"), lit(5i8), lit(7i8), lit(i32::MAX), lit(ScalarValue::Null)];
+
+        for args in greatest_args.permutation(greatest_args.len()) {
+            let df = df.clone().select(vec![
+                greatest.call(args)
+            ]).unwrap();
+
+            let results = get_primitive_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+            assert_eq!(results, vec![
+                vec![Some(i32::MAX); a_vec.len()]
             ]);
         }
     }

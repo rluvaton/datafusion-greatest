@@ -1,5 +1,5 @@
-use crate::helpers::{find_coerced_type, keep_larger};
-use datafusion::arrow::array::{new_null_array, Array};
+use crate::helpers::{find_coerced_type, keep_larger, keep_larger_scalar};
+use datafusion::arrow::array::{Array, ArrayRef};
 use datafusion::arrow::datatypes::DataType;
 use datafusion::error::Result;
 use datafusion::logical_expr::Volatility;
@@ -69,50 +69,63 @@ impl ScalarUDFImpl for GreatestUdf {
         // function, but we check again to make sure
         assert!(args.len() >= 2);
 
-        let return_type = args[0].data_type();
+        // Split to scalars and arrays
+        let (scalars, arrays): (Vec<_>, Vec<_>) = args.iter().partition(|x| match x {
+            ColumnarValue::Scalar(_) => true,
+            ColumnarValue::Array(_) => false,
+        });
 
-        // We can add some fast path to avoid computation if we have a scalar that is the maximum value
-        // but we will skip it for now as it's not the common case
-
-        // TODO - different size arrays
-        let return_array_size = args
+        let mut arrays_iter = arrays
             .iter()
-            .filter_map(|x| match x {
-                ColumnarValue::Array(array) => Some(array.len()),
-                _ => None,
-            })
-            .next()
+            .map(|x| match x {
+                ColumnarValue::Array(a) => a,
+                _ => unreachable!(),
+            });
 
-            // 1 in the case of scalar
-            .unwrap_or(1);
+        let first_array = arrays_iter.next();
 
-        // TODO - partition by scalar and array,
-        //        merge all scalars into one and use it
-        //        to create new array for the current value
+        let mut largest: ArrayRef;
 
+        // Merge all scalars into one to avoid recomputing
+        if !scalars.is_empty() {
+            let mut scalars_iter = scalars
+                .iter()
+                .map(|x| match x {
+                    ColumnarValue::Scalar(s) => s,
+                    _ => unreachable!(),
+                });
 
-        // start with nulls as default output
-        let mut current_value = new_null_array(&return_type, return_array_size);
+            // We have at least one scalar
+            let mut largest_scalar = scalars_iter.next().unwrap();
 
-        for arg in args {
-            match arg {
-                ColumnarValue::Array(ref array) => {
-                    current_value = keep_larger(array.clone(), current_value)?;
-                }
-                ColumnarValue::Scalar(value) => {
-                    // If null skip to avoid creating array full of nulls
-                    if value.is_null() {
-                        continue;
-                    }
-
-                    // TODO - this has bad performance
-                    let last_value = value.to_array_of_size(return_array_size)?;
-                    current_value = keep_larger(last_value, current_value)?;
-                }
+            for scalar in scalars_iter {
+                largest_scalar = keep_larger_scalar(largest_scalar, scalar)?;
             }
+
+            // If we only have scalars, return the largest one
+            if arrays.is_empty() {
+                return Ok(ColumnarValue::Scalar(largest_scalar.clone()));
+            }
+
+            // We have at least one array
+            let first_array = first_array.unwrap();
+
+            // Start with the largest value
+            largest = keep_larger(
+                first_array.clone(),
+                largest_scalar.to_array_of_size(first_array.len())?
+            )?;
+        } else {
+            // If we only have arrays, start with the first array
+            // (We must have at least one array)
+            largest = first_array.unwrap().clone();
         }
 
-        Ok(ColumnarValue::Array(current_value))
+        for array in arrays_iter {
+            largest = keep_larger(array.clone(), largest)?;
+        }
+
+        Ok(ColumnarValue::Array(largest))
     }
 
     /// We will also add an alias of "my_greatest"

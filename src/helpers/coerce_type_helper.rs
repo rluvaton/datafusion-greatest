@@ -22,7 +22,6 @@ pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
         }
     }
 
-
     // For better error messages, we can find the ones that are incompatible with the rest
     plan_err!("Cannot find a common type for arguments, data types: {:?}", data_types)
 }
