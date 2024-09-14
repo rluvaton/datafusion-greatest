@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use crate::tests::utils::{create_context, create_primitive_array, find_greatest, generate_optional_values, generate_string_values, get_primitive_result_as_matrix, get_string_result_as_matrix};
-    use datafusion::arrow::array::{ArrayRef, RecordBatch, StringArray};
+    use crate::tests::utils::{create_context, create_primitive_array, find_greatest, generate_list_values, generate_optional_values, generate_string_values, get_list_result_as_matrix, get_primitive_result_as_matrix, get_string_result_as_matrix};
+    use datafusion::arrow::array::{ArrayRef, ListArray, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type};
     use datafusion_expr::col;
     use rand::Rng;
     use std::sync::Arc;
+    use crate::helpers::Transpose;
 
     #[tokio::test]
     async fn i8_without_nulls() {
@@ -351,5 +352,179 @@ mod tests {
         assert_eq!(results, vec![
             find_greatest(vec![a_vec.clone(), b_vec.clone()])
         ]);
+    }
+
+    #[tokio::test]
+    async fn list_without_nulls_in_nulls_as_list_and_in_values() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_list_values(100, 1..20, Some(0.0), Some(0.0));
+        let b_vec = generate_list_values(100, 1..20, Some(0.0), Some(0.0));
+        let a: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(a_vec.clone()));
+        let b: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn list_with_nulls_as_list_and_in_list_items() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_list_values(100, 1..20, Some(0.5), Some(0.5));
+        let b_vec = generate_list_values(100, 1..20, Some(0.5), Some(0.5));
+        let a: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(a_vec.clone()));
+        let b: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn list_with_nulls_as_list() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_list_values(100, 1..20, Some(0.5), Some(0.0));
+        let b_vec = generate_list_values(100, 1..20, Some(0.5), Some(0.0));
+        let a: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(a_vec.clone()));
+        let b: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn list_with_nulls_as_list_items() {
+        let (ctx, greatest) = create_context();
+
+        let a_vec = generate_list_values(100, 1..20, Some(0.0), Some(0.5));
+        let b_vec = generate_list_values(100, 1..20, Some(0.0), Some(0.5));
+        let a: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(a_vec.clone()));
+        let b: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(b_vec.clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![
+            find_greatest(vec![a_vec.clone(), b_vec.clone()])
+        ]);
+    }
+
+    #[tokio::test]
+    async fn lists() {
+        let (ctx, greatest) = create_context();
+        let rows = vec![
+            vec![
+                // Greatest is 2 as we look at the first item in each list first
+                Some(vec![Some(2), Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than None
+                Some(vec![None, Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![Some(6), Some(100)]),
+                Some(vec![Some(6), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![None, Some(100)]),
+                Some(vec![None, Some(200)]),
+            ],
+            vec![
+                // Greatest is None as having a value is greater than no value
+                Some(vec![None]),
+                Some(vec![]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than 0, even though the length is different
+                Some(vec![Some(1)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 4 as 4 is greater than nothing
+                Some(vec![Some(0)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 0 as 0 is greater than None
+                Some(vec![None, Some(3)]),
+                Some(vec![Some(0)]),
+            ],
+        ];
+
+        let cols = rows.transpose();
+
+        let a: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(cols[0].clone()));
+        let b: ArrayRef = Arc::new(ListArray::from_iter_primitive::<Int32Type, _, _>(cols[1].clone()));
+
+        let batch = RecordBatch::try_from_iter(vec![("a", a), ("b", b)]).unwrap();
+
+        ctx.register_batch("t", batch).unwrap();
+
+
+        let df = ctx.table("t").await.unwrap();
+
+        let df = df.select(vec![greatest.call(vec![col("a"), col("b")])]).unwrap();
+
+        let results = get_list_result_as_matrix::<Int32Type>(df).await.unwrap();
+
+        assert_eq!(results, vec![vec![
+            Some(vec![Some(2), Some(100)]),
+            Some(vec![Some(1), Some(200)]),
+            Some(vec![Some(6), Some(200)]),
+            Some(vec![None, Some(200)]),
+            Some(vec![None]),
+            Some(vec![Some(1)]),
+            Some(vec![Some(0), Some(4)]),
+            Some(vec![Some(0)]),
+        ]]);
     }
 }

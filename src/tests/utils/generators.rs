@@ -54,4 +54,16 @@ pub(crate) fn generate_string_values(size: usize, length_range: Range<usize>, pr
     }))
 }
 
+pub(crate) fn generate_list_values<T>(size: usize, list_length_range: Range<usize>, list_probability_of_none: Option<f64>, list_item_probability_of_none: Option<f64>) -> Vec<Option<Vec<Option<T>>>> where Standard: Distribution<T> {
+    let mut rng = thread_rng();
+
+    Vec::from_iter((0..size).map(|_| {
+        if rng.gen_bool(list_probability_of_none.unwrap_or(0.5)) {
+            None
+        } else {
+            Some(generate_optional_values::<T>(rng.gen_range(list_length_range.clone()), list_item_probability_of_none))
+        }
+    }))
+}
+
 

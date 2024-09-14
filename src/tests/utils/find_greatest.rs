@@ -136,7 +136,68 @@ mod tests {
         assert_eq!(actual.remove(0), Some("D2".to_string()));
 
         assert_eq!(actual, vec![]);
+    }
 
+    #[test]
+    fn test_lists() {
+        let rows = vec![
+            vec![
+                // Greatest is 2 as we look at the first item in each list first
+                Some(vec![Some(2), Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than None
+                Some(vec![None, Some(100)]),
+                Some(vec![Some(1), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![Some(6), Some(100)]),
+                Some(vec![Some(6), Some(200)]),
+            ],
+            vec![
+                // Greatest is 200 as if the first item is equal we look at the second item
+                Some(vec![None, Some(100)]),
+                Some(vec![None, Some(200)]),
+            ],
+            vec![
+                // Greatest is None as having a value is greater than no value
+                Some(vec![None]),
+                Some(vec![]),
+            ],
+            vec![
+                // Greatest is 1 as 1 is greater than 0, even though the length is different
+                Some(vec![Some(1)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 4 as 4 is greater than nothing
+                Some(vec![Some(0)]),
+                Some(vec![Some(0), Some(4)]),
+            ],
+            vec![
+                // Greatest is 0 as 0 is greater than None
+                Some(vec![None, Some(3)]),
+                Some(vec![Some(0)]),
+            ],
+        ];
+
+        let actual = find_greatest(
+            // Need to get as column
+            rows.transpose()
+        );
+
+        assert_eq!(actual, vec![
+            Some(vec![Some(2), Some(100)]),
+            Some(vec![Some(1), Some(200)]),
+            Some(vec![Some(6), Some(200)]),
+            Some(vec![None, Some(200)]),
+            Some(vec![None]),
+            Some(vec![Some(1)]),
+            Some(vec![Some(0), Some(4)]),
+            Some(vec![Some(0)]),
+        ]);
     }
 
 }
