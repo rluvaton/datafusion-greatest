@@ -88,6 +88,10 @@ impl ScalarUDFImpl for GreatestUdf {
             // 1 in the case of scalar
             .unwrap_or(1);
 
+        // TODO - partition by scalar and array,
+        //        merge all scalars into one and use it
+        //        to create new array for the current value
+
 
         // start with nulls as default output
         let mut current_value = new_null_array(&return_type, return_array_size);
