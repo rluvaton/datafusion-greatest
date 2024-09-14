@@ -29,7 +29,7 @@ pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArra
 
     let cmp = make_comparator(lhs, rhs, SORT_OPTIONS)?;
 
-    // TODO - handle rest of length
+    // We should have both arrays of the same length
     let len = lhs.len().min(rhs.len());
 
     // TODO - avoid this allocation
@@ -41,7 +41,6 @@ pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArra
 
 /// Return array where the largest value at each index is kept
 pub(crate) fn keep_larger(lhs: ArrayRef, rhs: ArrayRef) -> Result<ArrayRef> {
-
     // If one of the array is all null, return the other array
 
     if rhs.null_count() == rhs.len() {
