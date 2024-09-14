@@ -69,7 +69,7 @@ impl ScalarUDFImpl for GreatestUdf {
         // function, but we check again to make sure
         assert!(args.len() >= 2);
 
-        // Split to scalars and arrays
+        // Split to scalars and arrays for later optimization
         let (scalars, arrays): (Vec<_>, Vec<_>) = args.iter().partition(|x| match x {
             ColumnarValue::Scalar(_) => true,
             ColumnarValue::Array(_) => false,
@@ -86,7 +86,7 @@ impl ScalarUDFImpl for GreatestUdf {
 
         let mut largest: ArrayRef;
 
-        // Merge all scalars into one to avoid recomputing
+        // Optimization: merge all scalars into one to avoid recomputing
         if !scalars.is_empty() {
             let mut scalars_iter = scalars
                 .iter()

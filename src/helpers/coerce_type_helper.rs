@@ -4,9 +4,10 @@ use datafusion::error::Result;
 use datafusion_common::plan_err;
 
 pub(crate) fn find_coerced_type(data_types: &[DataType]) -> Result<&DataType> {
-    let non_null_types = data_types.iter().filter(|t| {
-        !t.is_null()
-    }).collect::<Vec<_>>();
+    let non_null_types = data_types
+        .iter()
+        .filter(|t| !t.is_null())
+        .collect::<Vec<_>>();
 
     if non_null_types.is_empty() {
         return Ok(&DataType::Null);

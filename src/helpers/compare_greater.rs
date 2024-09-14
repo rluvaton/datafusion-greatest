@@ -1,4 +1,5 @@
 use datafusion::arrow::array::{make_comparator, Array, ArrayRef, BooleanArray};
+use datafusion::arrow::buffer::BooleanBuffer;
 use datafusion::arrow::compute::SortOptions;
 use datafusion::error::Result;
 
@@ -26,14 +27,13 @@ pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArra
         return cmp::gt_eq(&lhs, &rhs).map_err(|e| e.into());
     }
 
-
     let cmp = make_comparator(lhs, rhs, SORT_OPTIONS)?;
 
     // We should have both arrays of the same length
     let len = lhs.len().min(rhs.len());
 
-    // TODO - avoid this allocation
-    let values = (0..len).map(|i| cmp(i, i).is_ge()).collect();
+    // Faster than using creating iterator
+    let values = BooleanBuffer::collect_bool(len, |i| cmp(i, i).is_ge());
 
     // No nulls as we only want to keep the values that are larger, its either true or false
     Ok(BooleanArray::new(values, None))
