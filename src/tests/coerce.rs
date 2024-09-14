@@ -3,8 +3,8 @@
 mod coerce_tests {
     use crate::helpers::Permutation;
     use crate::tests::utils::{create_context, create_empty_data_frame, get_combined_results, parse_many_columns};
+    use crate::vec_with_lit;
     use datafusion::arrow::datatypes::{Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type};
-    use datafusion_expr::lit;
 
     #[tokio::test]
     async fn coerce_types() {
@@ -13,19 +13,19 @@ mod coerce_tests {
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
         // Testing permutation of all types to make sure that the order of the arguments does not matter
-        let i8 = vec![lit(1i8), lit(2i8)].permutation(2);
-        let i16 = vec![lit(1i8), lit(2i16)].permutation(2);
-        let i32 = vec![lit(1i8), lit(2i16), lit(2i32)].permutation(3);
-        let i64 = vec![lit(1i8), lit(2i16), lit(2i32), lit(3i64)].permutation(4);
-        let f32 = vec![lit(1i8), lit(2i16), lit(2i32), lit(3i64), lit(1f32)].permutation(5);
-        let f64 = vec![lit(1i8), lit(2i16), lit(2i32), lit(3i64), lit(1f32), lit(2f64)].permutation(6);
+        let i8 = vec_with_lit![1i8, 2i8].permutation(2);
+        let i16 = vec_with_lit![1i8, 2i16].permutation(2);
+        let i32 = vec_with_lit![1i8, 2i16, 2i32].permutation(3);
+        let i64 = vec_with_lit![1i8, 2i16, 2i32, 3i64].permutation(4);
+        let f32 = vec_with_lit![1i8, 2i16, 2i32, 3i64, 1f32].permutation(5);
+        let f64 = vec_with_lit![1i8, 2i16, 2i32, 3i64, 1f32, 2f64].permutation(6);
         let greatest_calls = vec![
             i8.clone(),
             i16.clone(),
             i32.clone(),
             i64.clone(),
             f32.clone(),
-            f64.clone(),
+            f64.clone()
         ].concat().iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>();
 
         let df = df.select(greatest_calls).unwrap();
@@ -67,21 +67,21 @@ mod coerce_tests {
         // Testing permutation of all types to make sure that the order of the arguments does not matter
 
         // i8 and u8 are incompatible but i16 contain both
-        let i8_and_u8 = vec![lit(1i8), lit(2u8), lit(3i16)].permutation(3);
+        let i8_and_u8 = vec_with_lit![1i8, 2u8, 3i16].permutation(3);
         // i16 and u16 are incompatible but i32 contain both
-        let i16_and_u16 = vec![lit(1i16), lit(2u16), lit(3i32)].permutation(3);
+        let i16_and_u16 = vec_with_lit![1i16, 2u16, 3i32].permutation(3);
         // i32 and u32 are incompatible but i64 contain both
-        let i32_and_u32 = vec![lit(1i32), lit(2u32), lit(3i64)].permutation(3);
+        let i32_and_u32 = vec_with_lit![1i32, 2u32, 3i64].permutation(3);
         // i64 and u64 are incompatible but f32 contain both
-        let i64_and_u64_with_f32 = vec![lit(1i64), lit(2u64), lit(3f32)].permutation(3);
+        let i64_and_u64_with_f32 = vec_with_lit![1i64, 2u64, 3f32].permutation(3);
         // i64 and u64 are incompatible but f64 contain both
-        let i64_and_u64_with_f64 = vec![lit(1i64), lit(2u64), lit(3f64)].permutation(3);
+        let i64_and_u64_with_f64 = vec_with_lit![1i64, 2u64, 3f64].permutation(3);
         let greatest_calls = vec![
             i8_and_u8.clone(),
             i16_and_u16.clone(),
             i32_and_u32.clone(),
             i64_and_u64_with_f32.clone(),
-            i64_and_u64_with_f64.clone(),
+            i64_and_u64_with_f64.clone()
         ].concat().iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>();
 
         let df = df.select(greatest_calls).unwrap();

@@ -30,25 +30,56 @@ mod validation_tests {
 
     #[tokio::test]
     async fn test_incompatible_types() {
+        // TODO - add permutation tests to make sure that the order of the arguments does not matter
+        // |       |        | Incompatible type |
+        // | type  | Int32  |     u64              |
+
+
+        // TODO - vec
+        // let incompatible_types = vec![
+        //
+        // ];
+
         let error = call_greatest_with_args(vec![lit(1i32), lit(true)]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int32 and Boolean"), "Error message: {}", error.message());
+        assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int32, Boolean]"), "Error message: {}", error.message());
 
         let error = call_greatest_with_args(vec![lit(1i32), lit("hello".as_bytes())]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int32 and Binary"), "Error message: {}", error.message());
+        assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int32, Binary]"), "Error message: {}", error.message());
 
         let error = call_greatest_with_args(vec![lit(1i32), lit(vec![])]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int32 and Binary"), "Error message: {}", error.message());
+        assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int32, Binary]"), "Error message: {}", error.message());
 
-        let error = call_greatest_with_args(vec![lit(1i8), lit(1u8)]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int8 and UInt8"), "Error message: {}", error.message());
+        {
+            let error = call_greatest_with_args(vec![lit(1i8), lit(1u8)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int8, UInt8]"), "Error message: {}", error.message());
 
-        let error = call_greatest_with_args(vec![lit(1i16), lit(1u16)]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int16 and UInt16"), "Error message: {}", error.message());
+            let error = call_greatest_with_args(vec![lit(1i8), lit(1u16)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int8, UInt16]"), "Error message: {}", error.message());
 
-        let error = call_greatest_with_args(vec![lit(1i32), lit(1u32)]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int32 and UInt32"), "Error message: {}", error.message());
+            let error = call_greatest_with_args(vec![lit(1i8), lit(1u32)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int8, UInt32]"), "Error message: {}", error.message());
 
-        let error = call_greatest_with_args(vec![lit(1i64), lit(1u64)]).unwrap_err();
-        assert!(error.message().contains("Cannot find a common type for arguments, incompatible Int64 and UInt64"), "Error message: {}", error.message());
+            let error = call_greatest_with_args(vec![lit(1i8), lit(1u64)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int8, UInt64]"), "Error message: {}", error.message());
+        }
+
+        {
+            let error = call_greatest_with_args(vec![lit(1i16), lit(1u16)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int16, UInt16]"), "Error message: {}", error.message());
+
+            let error = call_greatest_with_args(vec![lit(1i16), lit(1u32)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int16, UInt32]"), "Error message: {}", error.message());
+
+            let error = call_greatest_with_args(vec![lit(1i16), lit(1u64)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int16, UInt64]"), "Error message: {}", error.message());
+        }
+
+        {
+            let error = call_greatest_with_args(vec![lit(1i32), lit(1u32)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int32, UInt32]"), "Error message: {}", error.message());
+
+            let error = call_greatest_with_args(vec![lit(1i32), lit(1u64)]).unwrap_err();
+            assert!(error.message().contains("Cannot find a common type for arguments, data types: [Int32, UInt64]"), "Error message: {}", error.message());
+        }
     }
 }
