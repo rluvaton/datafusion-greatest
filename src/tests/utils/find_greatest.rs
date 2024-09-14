@@ -2,30 +2,20 @@ use std::any::{Any, TypeId};
 use crate::helpers::Transpose;
 
 /// Results are returned as a matrix where each row corresponds to a column in the DataFrame.
-pub(crate) fn find_greatest<T: Ord + Copy + 'static>(results: Vec<Vec<T>>) -> Vec<T> {
+pub(crate) fn find_greatest<T: PartialOrd + Copy + 'static>(results: Vec<Vec<T>>) -> Vec<T> {
     let rows = results.transpose();
 
-    if TypeId::of::<T>() == TypeId::of::<f64>() {
-        // TODO - find prettier way to do this
-        (&rows as &dyn Any).downcast_ref::<Vec<f64>>().cloned().iter().map(|row| {
-            [row.clone(), vec![f64::NAN]].concat()
-                .into_iter()
-                .reduce(f64::max)
-                .map(|v| (&v as &dyn Any).downcast_ref::<T>().unwrap().clone())
-                .unwrap()
-        }).collect::<Vec<T>>()
-    } else if TypeId::of::<T>() == TypeId::of::<f32>() {
-        // TODO - find prettier way to do this
-        (&rows as &dyn Any).downcast_ref::<Vec<f32>>().cloned().iter().map(|row| {
-            [row.clone(), vec![f32::NAN]].concat()
-                .into_iter()
-                .reduce(f32::max)
-                .map(|v| (&v as &dyn Any).downcast_ref::<T>().unwrap().clone())
-                .unwrap()
-        }).collect::<Vec<T>>()
-    } else {
-        rows.iter().map(|row| *row.iter().max().unwrap()).collect()
-    }
+    rows.iter().map(|row| {
+        let max: T = row[0];
+
+        row.iter().fold(max, |acc, &x| {
+            if x > acc {
+                x
+            } else {
+                acc
+            }
+        })
+    }).collect()
 }
 
 #[cfg(test)]
@@ -112,6 +102,26 @@ mod tests {
         assert_eq!(find_greatest(cols), expected);
     }
 
-    // TODO - add test for f32 and f64
+    #[test]
+    fn test_get_expected_greatest_nullable_f32() {
+        let col_a: Vec<Option<f32>> = vec![Some(1f32), None, Some(f32::INFINITY), Some(f32::NAN), Some(f32::NAN)];
+        let col_b: Vec<Option<f32>> = vec![Some(5f32), None, Some(f32::NEG_INFINITY), Some(0f32), Some(f32::INFINITY)];
+        let cols = vec![col_a, col_b];
+
+        let mut actual = find_greatest(cols);
+
+        assert_eq!(actual.remove(0), Some(5f32));
+        assert_eq!(actual.remove(0), None);
+        assert_eq!(actual.remove(0), Some(f32::INFINITY));
+
+        // NaN is always the greatest
+        assert_eq!(actual.remove(0).unwrap().is_nan(), true);
+
+        // NaN is always the greatest, even if there is infinity
+        assert_eq!(actual.remove(0).unwrap().is_nan(), true);
+
+        assert_eq!(actual, vec![]);
+    }
+
 }
 
