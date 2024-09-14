@@ -109,40 +109,21 @@ mod scalars_tests {
 
         let df = create_empty_data_frame(&ctx, true).unwrap();
 
-        // 1 None, 1 f32:NAN  and one regular f32
-        let one_none_one_nan_one_number = vec![lit(1f32), lit(ScalarValue::Null), lit(f32::NAN)].permutation(3);
+
+        let values = vec![
+            lit(1f32),
+            lit(ScalarValue::Null),
+            lit(f32::NAN),
+            lit(f32::INFINITY)
+        ].permutation(4);
 
         let df = df.select(vec![
-            one_none_one_nan_one_number.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
+            values.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
         ].concat()).unwrap();
 
         let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
 
-        for result in results {
-            for r in result {
-                assert_eq!(r.is_none(), false);
-                assert_eq!(r.is_some(), true);
-                assert_eq!(r.unwrap().is_nan(), true);
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn float_inf_tests() {
-
-        let (ctx, greatest) = create_context();
-
-        let df = create_empty_data_frame(&ctx, true).unwrap();
-
-        // 1 None, 1 f32:NAN  and one regular f32
-        let one_none_one_nan_one_number = vec![lit(1f32), lit(f32::INFINITY), lit(f32::NAN)].permutation(3);
-
-        let df = df.select(vec![
-            one_none_one_nan_one_number.iter().map(|v| greatest.call(v.clone())).collect::<Vec<_>>(),
-        ].concat()).unwrap();
-
-        let results = get_result_as_matrix::<Float32Type>(df).await.unwrap().transpose();
-
+        // NaN is always the greatest, even if there is infinity
         for result in results {
             for r in result {
                 assert_eq!(r.is_none(), false);
