@@ -1,4 +1,6 @@
 mod greatest;
+
+#[cfg(test)]
 mod tests;
 mod traits;
 mod helpers;
