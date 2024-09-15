@@ -33,6 +33,7 @@ pub(crate) fn get_larger(lhs: &dyn Array, rhs: &dyn Array) -> Result<BooleanArra
     let len = lhs.len().min(rhs.len());
 
     // Faster than using creating iterator
+    // Why not iterator: https://github.com/apache/arrow-rs/pull/6395
     let values = BooleanBuffer::collect_bool(len, |i| cmp(i, i).is_ge());
 
     // No nulls as we only want to keep the values that are larger, its either true or false
